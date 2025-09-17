@@ -13,7 +13,7 @@ api_directory = GristDocAPI(DOC_ID, server=SERVER)
 # fetch all the rows
 directory_df = api_directory.fetch_table('Contact')
 directory_df = pd.DataFrame(directory_df)
-directory_df.groupby('Supprimez_mon_compte')['id'].nunique()
+print(directory_df.groupby('Supprimez_mon_compte')['id'].nunique())
 
 # renaming weird column
 directory_df = directory_df.rename(columns={'gristHelper_Display': 'nom_structure'})
@@ -25,11 +25,13 @@ cols_to_keep = [
 ]
 directory_df = directory_df[cols_to_keep]
 
+
 # Function to extract all emails that have not asked to be deteled from directory
 def get_emails(my_directory_df):
     my_directory_df = (my_directory_df.query('Supprimez_mon_compte == False')
-                                .sort_values(['Nom_domaine', 'nom'])
+                                      .sort_values(['Nom_domaine', 'nom'])
                       )
     return ', '.join(my_directory_df['email'])
 
-get_emails(directory_df)
+print('')
+print(get_emails(directory_df))
