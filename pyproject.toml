@@ -1,0 +1,10 @@
+[project]
+name = "ssphub_directory"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "grist-api>=0.1.1",
+    "pandas>=2.3.2",
+]

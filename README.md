@@ -1,1 +1,1 @@
-# ssphub_annuaire
+# ssphub_directory
