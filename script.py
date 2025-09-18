@@ -30,8 +30,11 @@ directory_df = directory_df[cols_to_keep]
 def get_emails(my_directory_df):
     my_directory_df = (my_directory_df.query('Supprimez_mon_compte == False')
                                       .sort_values(['Nom_domaine', 'nom'])
-                      )
-    return ', '.join(my_directory_df['email'])
+                                      )
+    # Turning emails from myemail@example.com to <myemail@example.com>
+    my_directory_df['email'] = '<' + my_directory_df['email'] + '>'                    
+    return '; '.join(my_directory_df['email'])
+
 
 print('')
 print(get_emails(directory_df))
