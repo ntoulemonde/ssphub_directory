@@ -1,8 +1,10 @@
-import email
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import requests  # To transform newsletter into email
+import yaml  # To transform newsletter into email
 
-def generate_eml_file(email_body, recipient, subject, sender_email =":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
+
+def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
     # Create a multipart message
     msg = MIMEMultipart()
     msg['Subject'] = subject
@@ -21,17 +23,81 @@ def generate_eml_file(email_body, recipient, subject, sender_email =":DG75-SSPHU
 
     print(f"Email saved as {eml_file_path}")
 
-# Example usage
-# email_body = "<html><body><h1>Hello, World!</h1></body></html>"
-# recipient = "<goufrunoitridoi-3309@yopmail.com>; <crelonnoyevoi-1576@yopmail.com>"
-# subject = "Test Email"
 
-# generate_eml_file(email_body, recipient, subject)
+# To get the qmf file from an url and return it as string
+def fetch_qmd_file(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.text
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching the .qmd file: {e}")
+        return None
 
-# Example usage
-if __name__ == "__main__":
-    body = "<h1>Hello, World!</h1><p>This is a test email.</p>"
-    recipients = "<recipient1@example.com>; <recipient2@example.com>"
-    subject = "Test Email"
-    generate_email(body, recipients, subject)
+
+def process_qmd_file(qmd_content, qmd_output_file):
+    # Split the YAML header and the HTML content
+    parts = qmd_content.split('---', 2)
+    if len(parts) < 3:
+        print("Invalid .qmd file format")
+        return None
+
+    yaml_header = parts[1]
+    html_content = parts[2]
+
+    # Clean the YAML header
+    cleaned_yaml_header = clean_yaml_header(yaml_header)
+
+    # Combine the cleaned YAML header and HTML content
+    processed_qmd_content = f"---\n{cleaned_yaml_header}---\n{html_content}"
+
+    # Save the processed QMD content to a file
+    with open(qmd_output_file, 'w', encoding='utf-8') as f:
+        f.write(processed_qmd_content)
+        
+    return processed_qmd_content
+
+
+def clean_yaml_header(yaml_header):
+    # Parse the YAML header1
+    yaml_data = yaml.safe_load(yaml_header)
+
+    # Keep only the specified keys
+    # We put the link
+    description = ("*" + yaml_data.get('description', '').strip() +
+                " disponible sur le site du [réseau](" + newsletter_link + ")*"
+                )
+
+    cleaned_yaml = {
+        'title': yaml_data.get('title', '').strip(),
+        'description': description
+    }
+
+    # Add missing params
+    cleaned_yaml['lang'] = 'fr'
+    cleaned_yaml['format'] = {'html': {'self-contained': True}}
+
+    # Convert the cleaned YAML back to a string
+    cleaned_yaml_str = yaml.dump(cleaned_yaml, sort_keys=False,  allow_unicode= True, width=4096)
+    return cleaned_yaml_str
+
+
+def knit_to_html(processed_qmd_file):
+    # Use the Quarto CLI to knit the QMD file to HTML
+    import subprocess
+    try:
+        subprocess.run(['quarto', 'render', processed_qmd_file, '--to', 'html'], check=True)
+        print("QMD file successfully knitted to HTML")
+    except subprocess.CalledProcessError as e:
+        print(f"Error knitting QMD file to HTML: {e}")
+
+
+# Example
+# qmd_url = "https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/newsletter_v3/infolettre/infolettre_19/index.qmd"
+# newsletter_link = 'https://ssphub.netlify.app/infolettre/infolettre_18/'
+# qmd_content = fetch_qmd_file(qmd_url)
+# process_qmd_file(qmd_content, "iL_19_light.qmd")
+# knit_to_html("iL_19_light.qmd")
+# with open('iL_19_light.html', 'r', encoding="utf-8") as f:
+#     generate_eml_file(f.read(), "test@example.fr", "Object")
 
