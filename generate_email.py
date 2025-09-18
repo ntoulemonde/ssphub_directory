@@ -100,4 +100,4 @@ def knit_to_html(processed_qmd_file):
 # knit_to_html("iL_19_light.qmd")
 # with open('iL_19_light.html', 'r', encoding="utf-8") as f:
 #     generate_eml_file(f.read(), "test@example.fr", "Object")
-
+ 
