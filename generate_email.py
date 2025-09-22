@@ -11,7 +11,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import requests  # To transform newsletter into email
 import yaml  # To transform newsletter into email
-
+import os 
 
 def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
     # Create a multipart message
@@ -44,7 +44,7 @@ def fetch_qmd_file(url):
         return None
 
 
-def process_qmd_file(qmd_content, qmd_output_file):
+def process_qmd_file(qmd_content, qmd_output_file, newsletter_url = 'https://ssphub.netlify.app/infolettre/'):
     # Split the YAML header and the HTML content
     parts = qmd_content.split('---', 2)
     if len(parts) < 3:
@@ -55,7 +55,7 @@ def process_qmd_file(qmd_content, qmd_output_file):
     html_content = parts[2]
 
     # Clean the YAML header
-    cleaned_yaml_header = clean_yaml_header(yaml_header)
+    cleaned_yaml_header = clean_yaml_header(yaml_header, newsletter_url)
 
     # Combine the cleaned YAML header and HTML content
     processed_qmd_content = f"---\n{cleaned_yaml_header}---\n{html_content}"
@@ -63,18 +63,16 @@ def process_qmd_file(qmd_content, qmd_output_file):
     # Save the processed QMD content to a file
     with open(qmd_output_file, 'w', encoding='utf-8') as f:
         f.write(processed_qmd_content)
-        
-    return processed_qmd_content
+    
 
-
-def clean_yaml_header(yaml_header):
+def clean_yaml_header(yaml_header, newsletter_url):
     # Parse the YAML header1
     yaml_data = yaml.safe_load(yaml_header)
 
     # Keep only the specified keys
     # We put the link
     description = ("*" + yaml_data.get('description', '').strip() +
-                " disponible sur le site du [réseau](" + newsletter_link + ")*"
+                " disponible sur le site du [réseau](" + newsletter_url + ")*"
                 )
 
     cleaned_yaml = {
@@ -101,12 +99,50 @@ def knit_to_html(processed_qmd_file):
         print(f"Error knitting QMD file to HTML: {e}")
 
 
-# Example
-# qmd_url = "https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/newsletter_v3/infolettre/infolettre_19/index.qmd"
-# newsletter_link = 'https://ssphub.netlify.app/infolettre/infolettre_18/'
-# qmd_content = fetch_qmd_file(qmd_url)
-# process_qmd_file(qmd_content, "iL_19_light.qmd")
-# knit_to_html("iL_19_light.qmd")
-# with open('iL_19_light.html', 'r', encoding="utf-8") as f:
-#     generate_eml_file(f.read(), "test@example.fr", "Object")
+def get_raw_url_newsletter(number, branch='main'):
+    # number = 19
+    # branch = 'newsletter_v3'
+    
+    qmd_url = ('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/'+ 
+        str(branch) + 
+        '/infolettre/infolettre_' + 
+        str(number) + '/index.qmd'
+        )
+    
+    return qmd_url
+
+
+def get_published_url_newsletter(number):
+    # number = 19
+    
+    newsletter_url = ('https://ssphub.netlify.app/infolettre/infolettre_' + 
+        str(number)  + 
+        '/'
+        )
+    
+    return newsletter_url
+
+
+def generate_email(number, branch, email_object, email_dest, drop_temp=True):
+    # Test
+    number = 19
+
+    temp_file='./temp'
+    temp_file_qmd = temp_file + '.qmd'
+    temp_file_html = temp_file + '.html'
+
+
+    qmd_content = fetch_qmd_file(get_raw_url_newsletter(number, branch))
+    process_qmd_file(qmd_content, temp_file_qmd, get_published_url_newsletter(number))
+    knit_to_html(temp_file_qmd)
+
+    with open(temp_file_html, 'r', encoding="utf-8") as f:
+        generate_eml_file(f.read(), email_dest, email_object)
+
+    if drop_temp:
+        os.remove(temp_file_qmd)
+        os.remove(temp_file_html)
+
+
+generate_email(19, 'newsletter_v3', 'Test', 'example@hi.fr')
  
