@@ -1,3 +1,12 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "email-mime",
+#     "pyyaml",
+#     "requests",
+# ]
+# ///
+
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import requests  # To transform newsletter into email

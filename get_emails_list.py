@@ -1,3 +1,11 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "grist-api",
+#     "pandas",
+# ]
+# ///
+
 import os
 from grist_api import GristDocAPI
 import pandas as pd
