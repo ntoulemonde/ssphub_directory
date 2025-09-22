@@ -2,6 +2,7 @@
 # requires-python = ">=3.13"
 # dependencies = [
 #     "email-mime",
+#     "os",
 #     "pyyaml",
 #     "requests",
 # ]
@@ -9,9 +10,9 @@
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import requests  # To transform newsletter into email
+import requests  # To transform newsletter into email, call Github API and download files
 import yaml  # To transform newsletter into email
-import os 
+import os  # to remove temporary files
 
 def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
     # Create a multipart message
@@ -26,7 +27,7 @@ def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB
     msg.attach(MIMEText(email_body, 'html'))
 
     # Save the email as an .eml file
-    eml_file_path = 'email.eml'
+    eml_file_path = '.temp/email.eml'
     with open(eml_file_path, 'wb') as f:
         f.write(msg.as_bytes())
 
@@ -123,14 +124,100 @@ def get_published_url_newsletter(number):
     return newsletter_url
 
 
+def list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch='main'):
+    # GitHub API URL to list contents of a subfolder
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{subfolder_path}?ref={branch}"
+
+    try:
+        # Send a GET request to the GitHub API
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Parse the JSON response
+        contents = response.json()
+
+        # Filter image files (assuming common image extensions)
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp'}
+        image_files = [
+            item['path'] for item in contents
+            if item['type'] == 'file' and os.path.splitext(item['name'])[1].lower() in image_extensions
+        ]
+
+        return image_files
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching contents from GitHub API: {e}")
+        return None
+
+def get_image_files_for_newsletter(number, branch='main'):
+    repo_owner = 'InseeFrLab'
+    repo_name = 'ssphub'
+    subfolder_path = f'infolettre/infolettre_{number}'
+
+    return list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch)
+
+
+def download_image_file(repo_owner, repo_name, file_path, branch='main', output_dir='.temp'):
+    # GitHub API URL to fetch the raw content of the file
+    url = f"https://raw.githubusercontent.com/{repo_owner}/{repo_name}/{branch}/{file_path}"
+
+    try:
+        # Send a GET request to the GitHub API
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+
+        # Create the output directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Extract the file name from the file path
+        file_name = os.path.basename(file_path)
+
+        # Save the file to the output directory
+        output_path = os.path.join(output_dir, file_name)
+        with open(output_path, 'wb') as f:
+            f.write(response.content)
+
+        print(f"Image file downloaded to {output_path}")
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error downloading image file: {e}")
+
+
+def download_image_files_for_newsletter(number, branch='main', output_dir='.temp'):
+    repo_owner = 'InseeFrLab'
+    repo_name = 'ssphub'
+    subfolder_path = f'infolettre/infolettre_{number}'
+
+    # Get the list of image files in the subfolder
+    image_files = get_image_files_for_newsletter(number, branch)
+
+    if not image_files:
+        print("No image files found in the subfolder.")
+
+    # Download each image file
+    downloaded_files = []
+    for image_file in image_files:
+        downloaded_file = download_image_file(repo_owner, repo_name, image_file, branch, output_dir)
+        if downloaded_file:
+            downloaded_files.append(downloaded_file)
+
+    return downloaded_files
+
+# Example usage
+# downloaded_files = download_image_files_for_newsletter(18)
+# if downloaded_files:
+#     print("Downloaded image files:")
+#     for downloaded_file in downloaded_files:
+#         print(downloaded_file)
+
 def generate_email(number, branch, email_object, email_dest, drop_temp=True):
     # Test
-    number = 19
+    # number = 19
 
-    temp_file='./temp'
+    temp_file='./.temp/temp'
     temp_file_qmd = temp_file + '.qmd'
     temp_file_html = temp_file + '.html'
 
+    download_image_files_for_newsletter(number, branch, '.temp')
 
     qmd_content = fetch_qmd_file(get_raw_url_newsletter(number, branch))
     process_qmd_file(qmd_content, temp_file_qmd, get_published_url_newsletter(number))
@@ -143,6 +230,6 @@ def generate_email(number, branch, email_object, email_dest, drop_temp=True):
         os.remove(temp_file_qmd)
         os.remove(temp_file_html)
 
-
-generate_email(19, 'newsletter_v3', 'Test', 'example@hi.fr')
+# Test
+# generate_email(19, 'newsletter_v3', 'Test', 'example@hi.fr')
  
