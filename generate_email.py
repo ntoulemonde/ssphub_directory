@@ -8,10 +8,10 @@
 # ]
 # ///
 
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart  # To generate the draft email
+from email.mime.text import MIMEText  # To generate the draft email
 import requests  # To transform newsletter into email, call Github API and download files
-import yaml  # To transform newsletter into email
+import yaml  # To update newsletter qmd metadata for the email
 import os  # to remove temporary files
 
 def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
@@ -34,8 +34,8 @@ def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB
     print(f"Email saved as {eml_file_path}")
 
 
-# To get the qmf file from an url and return it as string
 def fetch_qmd_file(url):
+    # get the qmf file from an url and return it as string
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -100,28 +100,12 @@ def knit_to_html(processed_qmd_file):
         print(f"Error knitting QMD file to HTML: {e}")
 
 
-def get_raw_url_newsletter(number, branch='main'):
-    # number = 19
-    # branch = 'newsletter_v3'
-    
-    qmd_url = ('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/'+ 
-        str(branch) + 
-        '/infolettre/infolettre_' + 
-        str(number) + '/index.qmd'
-        )
-    
-    return qmd_url
+def raw_url_newsletter(number, branch='main'):
+    return f"https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/{branch}/infolettre/infolettre_{number}/index.qmd"
 
 
-def get_published_url_newsletter(number):
-    # number = 19
-    
-    newsletter_url = ('https://ssphub.netlify.app/infolettre/infolettre_' + 
-        str(number)  + 
-        '/'
-        )
-    
-    return newsletter_url
+def published_url_newsletter(number):
+    return f"https://ssphub.netlify.app/infolettre/infolettre_{number}/"
 
 
 def list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch='main'):
@@ -202,25 +186,16 @@ def download_image_files_for_newsletter(number, branch='main', output_dir='.temp
 
     return downloaded_files
 
-# Example usage
-# downloaded_files = download_image_files_for_newsletter(18)
-# if downloaded_files:
-#     print("Downloaded image files:")
-#     for downloaded_file in downloaded_files:
-#         print(downloaded_file)
 
 def generate_email(number, branch, email_object, email_dest, drop_temp=True):
-    # Test
-    # number = 19
-
     temp_file='./.temp/temp'
     temp_file_qmd = temp_file + '.qmd'
     temp_file_html = temp_file + '.html'
 
     download_image_files_for_newsletter(number, branch, '.temp')
 
-    qmd_content = fetch_qmd_file(get_raw_url_newsletter(number, branch))
-    process_qmd_file(qmd_content, temp_file_qmd, get_published_url_newsletter(number))
+    qmd_content = fetch_qmd_file(raw_url_newsletter(number, branch))
+    process_qmd_file(qmd_content, temp_file_qmd, published_url_newsletter(number))
     knit_to_html(temp_file_qmd)
 
     with open(temp_file_html, 'r', encoding="utf-8") as f:
