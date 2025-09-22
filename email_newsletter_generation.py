@@ -252,5 +252,6 @@ def get_emails():
 
 
 # Test
-generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', get_emails())
- 
+# generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', get_emails())
+# generate_email(17, 'main', 'Infolettre de rentrée', get_emails())
+
