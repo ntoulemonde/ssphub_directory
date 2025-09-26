@@ -1,18 +1,3 @@
-# Dic
-# my_title  # Title of the webpage
-# my_description
-# my_authors
-# my_date
-# my_image_path
-# my_categories
-# my_table_title 
-# my_table_details
-# my_table_sponsor
-# my_table_team
-# my_table_contact
-# my_table_results
-# my_table_repo_path
-
 import pandas as pd
 import os
 from grist_api import GristDocAPI  # To get directory emails
@@ -49,23 +34,32 @@ def ensure_folders_exist(file_path):
             print(f"Created directory: {current_path}")
 
 
-def replace_model(path_to_model, df, path_to_output=None):
-    with open(path_to_model, 'r') as model_file:
-        model_content = model_file.read()
+def replace_template(path_to_template, df, path_to_output=None):
+    """
+    Update the variables in a template QMD file with the ones from a data table.
+
+    Args:
+        df (Panda object): data frame where to have the values
+        qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
+        path_to_output (str): A string to save the output as a qmd file. Format 'my_folder/subfolder/my_file.qmd'
+    """
+
+    with open(path_to_template, 'r') as file:
+        template_content = file.read()
 
     for index, row in df.iterrows():
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
             print('{{'+ variable_name + '}} : ' + str(variable_value))
-            model_content = model_content.replace('{{'+ variable_name + '}}', str(variable_value))
+            template_content = template_content.replace('{{'+ variable_name + '}}', str(variable_value))
 
     if path_to_output is not None:
         ensure_folders_exist(path_to_output)
         with open(path_to_output, 'w') as res_file:
-            res_file.write(model_content)
+            res_file.write(template_content)
 
-    return model_content
+    return template_content
 
 
 # Create a test DataFrame with the variables to replace
@@ -85,7 +79,7 @@ def replace_model(path_to_model, df, path_to_output=None):
 #     'my_table_repo_path': ['- [here](https://www.google.com/) <br>- or [here](https://www.google.com/)']
 # })
 
-# replace_model('ssphub_directory/model.qmd', test_data, 'ssphub_directory/hi/mon_model.qmd')
+# replace_template('ssphub_directory/template.qmd', test_data, 'ssphub_directory/hi/mon_modele.qmd')
 
 def get_api_website_login():
     # Log in to GRIST API
@@ -96,7 +90,7 @@ def get_api_website_login():
     # Returning API details connection
     return GristDocAPI(DOC_ID, server=SERVER)
 
-# Get API table
+# Get pages to create from Grist document
 def get_website_merge_as_df():
     # fetch all the rows
     api_merge = get_api_website_login()
@@ -109,24 +103,35 @@ def get_website_merge_as_df():
        'Resultats', 'Details_du_projet', 'sous_titre', 'auteurs',
        'Code_du_projet', 'tags', 'nom_dossier', 'date',
        'image']
+    new_website_df = new_website_df[cols_to_keep]
 
-    return new_website_df[cols_to_keep]
+    new_website_df['Titre_Tab'] = new_website_df['Titre']
+    new_website_df['Titre'] = '"' + new_website_df['Titre'] + '"'
+    # new_website_df['sous_titre'] = '"' + new_website_df['sous_titre'] + '"'
 
-
-get_website_merge_as_df().columns
-
-variable_mapping = {
+    # Dictionnary for renaming variables / Right part must correspond to template keywords
+    variable_mapping = {
         'Titre': 'my_title',
         'sous_titre': 'my_description',
         'auteurs': 'my_authors',
         'date': 'my_date',
         'image': 'my_image_path',
         'tags': 'my_categories',
-        'Titre': 'my_table_title',
         'Details_du_projet': 'my_table_details',
         'Sponsor': 'my_table_sponsor',
         'Equipe': 'my_table_team',
         'Point_de_contact': 'my_table_contact',
         'Resultats': 'my_table_results',
-        'Code_du_projet': 'my_table_repo_path'
-}
+        'Code_du_projet': 'my_table_repo_path', 
+        'Titre_Tab':'my_table_title'
+    }
+
+    new_website_df = new_website_df.rename(columns=variable_mapping)
+
+    return new_website_df
+
+
+# Test
+# df = get_website_merge_as_df().head(1)
+# replace_template('ssphub_directory/template.qmd', df.head(1), 'ssphub_directory/' + str(df.iloc[0,:]['nom_dossier'])+'/index.qmd')
+

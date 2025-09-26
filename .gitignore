@@ -1,3 +1,8 @@
+# Quarto
+*_files/
+*.html
+res.qmd
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -219,6 +224,4 @@ __marimo__/
 *.svg
 *.webp
 
-res.qmd
-res.html
-res_files/
+
