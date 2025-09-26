@@ -1,0 +1,34 @@
+---
+title: {{my_title}}
+
+# Summary for listings and search engines
+description: |
+  {{my_description}}
+
+format: html
+
+authors: 
+{{my_authors}}
+
+# Date published
+date: {{my_date}}
+
+# Date updated
+image: {{my_image_path}}
+
+categories : 
+{{my_categories}}
+
+---
+
+# Synthèse du projet
+
+|              | {{my_table_title}}                           |
+|--------------|------------------------------------------------------------------------------------|
+| **Détail du projet**         | {{my_table_details}}         |
+| **Sponsor**                  | {{my_table_sponsor}}         |
+| **Équipe**                   | {{my_table_team}}            |
+| **Point de contact**         | {{my_table_contact}}         |
+| **Résultats du projet**      | {{my_table_results}}         |
+| **Code du projet**           | {{my_table_repo_path}}       |
+

@@ -218,3 +218,7 @@ __marimo__/
 *.bmp
 *.svg
 *.webp
+
+res.qmd
+res.html
+res_files/
