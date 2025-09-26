@@ -26,7 +26,7 @@ def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB
     msg['BCC'] = recipient
     msg['To'] = sender_email   # Auto send the email
     msg['From'] = 'SELECT THE RIGHT EMAIL'  # Set the sender's email address
-    msg['X-Unsent'] = '1'  # Mark the email as unsent : when he file is opened, it can be sent. 
+    msg['X-Unsent'] = '1'  # Mark the email as unsent : when he file is opened, it can be sent.
 
     # Attach the HTML body
     msg.attach(MIMEText(email_body, 'html'))
@@ -50,7 +50,7 @@ def fetch_qmd_file(url):
         return None
 
 
-def process_qmd_file(qmd_content, qmd_output_file, newsletter_url = 'https://ssphub.netlify.app/infolettre/'):
+def process_qmd_file(qmd_content, qmd_output_file, newsletter_url='https://ssphub.netlify.app/infolettre/'):
     # Split the YAML header and the HTML content
     parts = qmd_content.split('---', 2)
     if len(parts) < 3:
@@ -69,7 +69,7 @@ def process_qmd_file(qmd_content, qmd_output_file, newsletter_url = 'https://ssp
     # Save the processed QMD content to a file
     with open(qmd_output_file, 'w', encoding='utf-8') as f:
         f.write(processed_qmd_content)
-    
+
 
 def clean_yaml_header(yaml_header, newsletter_url):
     # Parse the YAML header1
@@ -84,7 +84,7 @@ def clean_yaml_header(yaml_header, newsletter_url):
     cleaned_yaml = {
         'title': yaml_data.get('title', '').strip(),
         'description': description
-    }
+                }
 
     # Add missing params
     cleaned_yaml['lang'] = 'fr'
@@ -137,6 +137,7 @@ def list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch=
         print(f"Error fetching contents from GitHub API: {e}")
         return None
 
+
 def get_image_files_for_newsletter(number, branch='main'):
     repo_owner = 'InseeFrLab'
     repo_name = 'ssphub'
@@ -166,7 +167,7 @@ def download_image_file(repo_owner, repo_name, file_path, branch='main', output_
             f.write(response.content)
 
         print(f"Image file downloaded to {output_path}")
-        
+
     except requests.exceptions.RequestException as e:
         print(f"Error downloading image file: {e}")
 
@@ -174,7 +175,6 @@ def download_image_file(repo_owner, repo_name, file_path, branch='main', output_
 def download_image_files_for_newsletter(number, branch='main', output_dir='.temp'):
     repo_owner = 'InseeFrLab'
     repo_name = 'ssphub'
-    subfolder_path = f'infolettre/infolettre_{number}'
 
     # Get the list of image files in the subfolder
     image_files = get_image_files_for_newsletter(number, branch)
@@ -193,7 +193,7 @@ def download_image_files_for_newsletter(number, branch='main', output_dir='.temp
 
 
 def generate_email(number, branch, email_object, email_dest, drop_temp=True):
-    temp_file='./.temp/temp'
+    temp_file = './.temp/temp'
     temp_file_qmd = temp_file + '.qmd'
     temp_file_html = temp_file + '.html'
 
@@ -247,11 +247,10 @@ def get_emails():
                                       .sort_values(['Nom_domaine', 'nom'])
                                       )
     # Turning emails from myemail@example.com to <myemail@example.com>
-    my_directory_df['email'] = '<' + my_directory_df['email'] + '>'                    
+    my_directory_df['email'] = '<' + my_directory_df['email'] + '>'
     return '; '.join(my_directory_df['email'])
 
 
 # Test
-# generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', get_emails())
+generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', 'test')
 # generate_email(17, 'main', 'Infolettre de rentrée', get_emails())
-
