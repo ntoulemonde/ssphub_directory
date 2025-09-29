@@ -17,7 +17,9 @@ import yaml  # To update newsletter qmd metadata for the email
 import os  # to remove temporary files
 from grist_api import GristDocAPI  # To get directory emails
 import pandas as pd  # to manage directory emails
-
+import csv  # to store results of data cleaning
+import re  # For pattern matching to search for emails
+import csv  # To export results as csv
 
 def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
     # Create a multipart message
@@ -261,3 +263,85 @@ def get_emails():
 # Test
 # generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', 'test', True)
 # generate_email(17, 'main', 'Infolettre de rentrée', get_emails())
+
+
+
+def extract_emails(file_path='ssphub_directory/input/replies.txt'):
+    """
+    Extract all email addresses from a file that contains all the automatic replies to a newsletter / an email.
+
+    Args:
+        file_path (str): The path to the file containing email addresses.
+
+    Returns:
+        list: A list of extracted email addresses.
+    """
+    # Regular expression pattern for matching email addresses
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+    # Read the content of the file
+    with open(file_path, 'r', encoding='utf-8') as file:
+        content = file.read()
+
+    # Find all email addresses in the content
+    emails = re.findall(email_pattern, content)
+
+    # Remove duplicate - Convert the list of email addresses to a set and back to list
+    emails = set(emails)
+    emails = list(emails)
+
+    return emails
+
+
+def export_list_to_csv(data_list, file_path):
+    """
+    Export a list to a CSV file using the csv module.
+
+    Args:
+        data_list (list): The list to export.
+        file_path (str): The path to the CSV file.
+    """
+    with open(file_path, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        for item in data_list:
+            writer.writerow([item])
+
+
+# export_list_to_csv(extract_emails(), 'output/temp.csv')
+
+
+def get_api_login():
+    # Log in to GRIST API
+    SERVER = "https://grist.numerique.gouv.fr/"
+    DOC_ID = os.environ['SSPHUB_DIRECTORY_ID']
+    os.environ['GRIST_API_KEY'] = os.environ['MY_GRIST_API_KEY']
+
+    # Returning API details connection
+    return GristDocAPI(DOC_ID, server=SERVER)
+
+
+def get_ids_of_email(emails_list):
+    """
+    Return the ids of the rows of the email in the GRIST directory
+
+    Args:
+        emails_list (list) : a list of strings, containing the emails to look for in df
+
+    Returns:
+        list: A list of ids of the rows in df
+    """
+    # Get the latest GRIST directory 
+    api_directory = get_api_login()
+    directory_df = api_directory.fetch_table('Contact')
+    directory_df = pd.DataFrame(directory_df)
+
+    # Emails to dataframe
+    emails_df = pd.DataFrame({'emails':emails_list})
+
+    # Filter the emails
+    res = directory_df[directory_df['email'].isin(emails_to_delete['emails'])]
+    res = res['id'].values.tolist()
+    
+    return res
+
+# get_ids_of_email(extract_emails())
