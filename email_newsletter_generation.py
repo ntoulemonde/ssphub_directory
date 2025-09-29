@@ -88,7 +88,12 @@ def clean_yaml_header(yaml_header, newsletter_url):
 
     # Add missing params
     cleaned_yaml['lang'] = 'fr'
-    cleaned_yaml['format'] = {'html': {'self-contained': True}}
+    cleaned_yaml['format'] = {
+        'html': {
+            'self-contained': True,  # To have images inside the email
+            'css': '../ssphub_directory/email_style/style.css'
+            }
+        }
 
     # Convert the cleaned YAML back to a string
     cleaned_yaml_str = yaml.dump(cleaned_yaml, sort_keys=False,  allow_unicode= True, width=4096)
@@ -236,8 +241,10 @@ def get_directory_as_df():
         'id', 'nom', 'prenom', 'email', 'Structure', 'Ajout_date', 'Supprimez_mon_compte',
         'Nom_domaine', 'Siren_structure', 'nom_structure',
     ]
+    directory_df = directory_df[cols_to_keep]
 
-    return directory_df[cols_to_keep]
+    return directory_df
+
 
 
 def get_emails():
@@ -252,5 +259,5 @@ def get_emails():
 
 
 # Test
-generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', 'test')
+# generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', 'test', True)
 # generate_email(17, 'main', 'Infolettre de rentrée', get_emails())
