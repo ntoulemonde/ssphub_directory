@@ -26,9 +26,7 @@ categories :
 |              | {{my_table_title}}                           |
 |--------------|------------------------------------------------------------------------------------|
 | **Détail du projet**         | {{my_table_details}}         |
-| **Sponsor**                  | {{my_table_sponsor}}         |
-| **Équipe**                   | {{my_table_team}}            |
-| **Point de contact**         | {{my_table_contact}}         |
+| **Acteurs**                  | {{my_table_actors}}         |
 | **Résultats du projet**      | {{my_table_results}}         |
 | **Code du projet**           | {{my_table_repo_path}}       |
 

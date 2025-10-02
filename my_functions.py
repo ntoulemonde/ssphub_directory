@@ -19,7 +19,7 @@ from grist_api import GristDocAPI  # To get directory emails
 import pandas as pd  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
-import csv  # To export results as csv
+
 
 def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
     # Create a multipart message
@@ -233,24 +233,25 @@ def get_directory_as_df():
     api_directory = get_api_login()
     directory_df = api_directory.fetch_table('Contact')
     directory_df = pd.DataFrame(directory_df)
-    print(directory_df.groupby('Supprimez_mon_compte')['id'].nunique())
 
-    # renaming weird column
-    directory_df = directory_df.rename(columns={'gristHelper_Display': 'nom_structure'})
-
-    # Selecting useful columns
+    # Selecting minimum set of columns and recreating domain name
     cols_to_keep = [
-        'id', 'nom', 'prenom', 'email', 'Structure', 'Ajout_date', 'Supprimez_mon_compte',
-        'Nom_domaine', 'Siren_structure', 'nom_structure',
-    ]
-    directory_df = directory_df[cols_to_keep]
+        'email', 'Supprimez_mon_compte', 'nom'
+        ]
+    directory_df = (directory_df.loc[:,cols_to_keep]
+                                .assign(Nom_domaine= lambda df: df.email.str.split('@').str[1])
+                   )
 
     return directory_df
 
 
-
 def get_emails():
-    # Extract all emails that have not asked to be deteled from directory
+    """
+    Extract all emails that have not asked to be deteled from directory
+    
+    Returns:
+        a single string with joined emails : '<email1@com.com>;<email2@fr.fr>'
+    """
     my_directory_df = get_directory_as_df()
     my_directory_df = (my_directory_df.query('Supprimez_mon_compte == False')
                                       .sort_values(['Nom_domaine', 'nom'])
@@ -260,13 +261,7 @@ def get_emails():
     return '; '.join(my_directory_df['email'])
 
 
-# Test
-# generate_email(19, 'newsletter_v3', 'Infolettre de rentrée', 'test', True)
-# generate_email(17, 'main', 'Infolettre de rentrée', get_emails())
-
-
-
-def extract_emails(file_path='ssphub_directory/input/replies.txt'):
+def extract_emails_from_txt(file_path='ssphub_directory/input/replies.txt'):
     """
     Extract all email addresses from a file that contains all the automatic replies to a newsletter / an email.
 
@@ -301,47 +296,157 @@ def export_list_to_csv(data_list, file_path):
         data_list (list): The list to export.
         file_path (str): The path to the CSV file.
     """
+
     with open(file_path, 'w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         for item in data_list:
             writer.writerow([item])
 
 
-# export_list_to_csv(extract_emails(), 'output/temp.csv')
+#     UNUSED FOR NOW - A FIRST BRICK TO BUILD ON A FUNCTION TO AUTOMATICALLY DELETE ROWS BASED ON IDS
+# def get_ids_of_email(emails_list):
+#     """
+#     Return the ids of the rows of the email in the GRIST directory
+
+#     Args:
+#         emails_list (list) : a list of strings, containing the emails to look for in df
+
+#     Returns:
+#         list: A list of ids of the rows in df
+
+#     """
+#     # Get the latest GRIST directory 
+#     api_directory = get_api_login()
+#     directory_df = api_directory.fetch_table('Contact')
+#     directory_df = pd.DataFrame(directory_df)
+
+#     # Emails to dataframe
+#     emails_df = pd.DataFrame({'emails':emails_list})
+
+#     # Filter the emails
+#     res = directory_df[directory_df['email'].isin(emails_df['emails'])]
+#     res = res['id'].values.tolist()
+    
+#     return res
 
 
-def get_api_login():
+
+def ensure_folders_exist(file_path):
+    """
+    Ensure that every folder in the given file path exists. If any folder is missing, create it.
+
+    Args:
+        file_path (str): The file path to check and create folders for.
+    """
+    # Normalize the path to handle any relative path components
+    normalized_path = os.path.normpath(file_path)
+
+    # Split the path into its components
+    path_components = normalized_path.split(os.sep)
+   
+    # Remove the last component if it is a file
+    if '.' in path_components[-1]:
+        path_components = path_components[:-1]
+
+    # Initialize the current path
+    current_path = path_components[0]
+
+    # Iterate over the path components
+    for component in path_components[1:]:
+        # Update the current path
+        current_path = os.path.join(current_path, component)
+
+        # Check if the current path is a directory
+        if not os.path.isdir(current_path):
+            # Create the directory if it does not exist
+            os.makedirs(current_path)
+            print(f"Created directory: {current_path}")
+
+
+def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
+    """
+    Update the variables in a template QMD file with the ones from a data table.
+
+    Args:
+        df (Panda object): data frame where to have the values. A column must be named 'nom_dossier'
+        qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
+        path_to_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
+    """
+
+    with open(path_to_template, 'r') as file:
+        template_content = file.read()
+
+    if path_to_output is not None: 
+        df['nom_dossier'] = path_to_output + df['nom_dossier'] + '/index.qmd'
+    else:
+        df['nom_dossier'] = df['nom_dossier'] + '/index.qmd'
+
+    for index, row in df.iterrows():
+        for column in df.columns:
+            variable_name = column
+            variable_value = row[column]
+            print('{{'+ variable_name + '}} : ' + str(variable_value))
+            template_content = template_content.replace('{{'+ variable_name + '}}', str(variable_value))
+
+
+        ensure_folders_exist(str(row['nom_dossier']))
+        with open(path_to_output, 'w') as res_file:
+            res_file.write(template_content)
+
+    return template_content
+
+
+def get_api_website_login():
     # Log in to GRIST API
     SERVER = "https://grist.numerique.gouv.fr/"
-    DOC_ID = os.environ['SSPHUB_DIRECTORY_ID']
+    DOC_ID = os.environ['SSPHUB_WEBSITE_MERGE_ID']
     os.environ['GRIST_API_KEY'] = os.environ['MY_GRIST_API_KEY']
 
     # Returning API details connection
     return GristDocAPI(DOC_ID, server=SERVER)
 
 
-def get_ids_of_email(emails_list):
+def get_website_merge_as_df():
     """
-    Return the ids of the rows of the email in the GRIST directory
+    Get the table from GRIST to fetch all infos about index pages to create
 
-    Args:
-        emails_list (list) : a list of strings, containing the emails to look for in df
-
-    Returns:
-        list: A list of ids of the rows in df
-    """
-    # Get the latest GRIST directory 
-    api_directory = get_api_login()
-    directory_df = api_directory.fetch_table('Contact')
-    directory_df = pd.DataFrame(directory_df)
-
-    # Emails to dataframe
-    emails_df = pd.DataFrame({'emails':emails_list})
-
-    # Filter the emails
-    res = directory_df[directory_df['email'].isin(emails_to_delete['emails'])]
-    res = res['id'].values.tolist()
+    Arg: 
+        None
     
-    return res
+    Returns:
+        A pd dataframe with columns matching the template variable names
+    """
+    # fetch all the rows
+    api_merge = get_api_website_login()
+    new_website_df = api_merge.fetch_table('Intranet_details')
+    new_website_df = pd.DataFrame(new_website_df)
 
-# get_ids_of_email(extract_emails())
+    # Selecting useful columns
+    cols_to_keep = ['id', 'Acteurs', 'Resultats', 'Details_du_projet',
+       'sous_titre', 'Code_du_projet', 'tags', 'nom_dossier', 'date',
+       'image', 'Titre']
+    new_website_df = new_website_df[cols_to_keep]
+
+    new_website_df['Titre_Tab'] = new_website_df['Titre']
+    new_website_df['Titre'] = '"' + new_website_df['Titre'] + '"'
+    # new_website_df['sous_titre'] = '"' + new_website_df['sous_titre'] + '"'
+
+    # Dictionnary for renaming variables / Right part must correspond to template keywords
+    variable_mapping = {
+        'Titre': 'my_title',
+        'sous_titre': 'my_description',
+        'auteurs': 'my_authors',
+        'date': 'my_date',
+        'image': 'my_image_path',
+        'tags': 'my_categories',
+        'Details_du_projet': 'my_table_details',
+        'Acteurs': 'my_table_actors',
+        'Resultats': 'my_table_results',
+        'Code_du_projet': 'my_table_repo_path', 
+        'Titre_Tab':'my_table_title'
+    }
+
+    new_website_df = new_website_df.rename(columns=variable_mapping)
+
+    return new_website_df
+

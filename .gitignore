@@ -3,6 +3,10 @@
 *.html
 res.qmd
 
+# Test
+2023_Enquete_Budget_Famille/
+test/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
