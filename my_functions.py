@@ -19,6 +19,7 @@ from grist_api import GristDocAPI  # To get directory emails
 import pandas as pd  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
+import shutil  # to remove directory and its content
 
 
 def generate_eml_file(email_body, subject, bcc_recipient, to_recipient=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
@@ -421,7 +422,9 @@ def get_grist_directory_login():
     # Log in to GRIST API
     SERVER = "https://grist.numerique.gouv.fr/"
     DOC_ID = os.environ['SSPHUB_DIRECTORY_ID']
-    os.environ['GRIST_API_KEY'] = os.environ['MY_GRIST_API_KEY']
+
+    if 'GRIST_API_KEY' not in os.environ:
+        raise ValueError("The GRIST_API_KEY environment variable does not exist.")
 
     # Returning API details connection
     return GristDocAPI(DOC_ID, server=SERVER)
@@ -551,20 +554,21 @@ def export_list_to_csv(data_list, file_path):
 #     return res
 
 
-def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
+def fill_template(path_to_template, df, directory_output='ssphub_directory'):
     """
     Update the variables in a template QMD file with the ones from a data table.
 
     Args:
         df (Panda object): data frame where to have the values. A column must be named 'nom_dossier'
         qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
-        path_to_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
+        directory_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
+        !!! Don't put / at the end . For example : test is OK but test/ NOT OK
     """
     with open(path_to_template, 'r') as file:
         template_content = file.read()
 
-    # Add path to output before the one in df
-    df['nom_dossier'] = path_to_output + '/' + df['nom_dossier'].str.strip('/')
+    # Add directory before the output folder in df
+    df['nom_dossier'] = directory_output.str.strip('/') + '/' + df['nom_dossier'].str.strip('/')
 
     for index, row in df.iterrows():
         for column in df.columns:
@@ -582,6 +586,8 @@ def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
 
         with open(output_file_path, 'w') as res_file:
             res_file.write(template_content)
+        
+        print(f'File written at {output_file_path}')
 
     return template_content
 
@@ -590,13 +596,15 @@ def get_grist_merge_website_login():
     # Log in to GRIST API
     SERVER = "https://grist.numerique.gouv.fr/"
     DOC_ID = os.environ['SSPHUB_WEBSITE_MERGE_ID']
-    os.environ['GRIST_API_KEY'] = os.environ['MY_GRIST_API_KEY']
+
+    if 'GRIST_API_KEY' not in os.environ:
+        raise ValueError("The GRIST_API_KEY environment variable does not exist.")
 
     # Returning API details connection
     return GristDocAPI(DOC_ID, server=SERVER)
 
 
-def get_website_merge_as_df():
+def get_grist_merge_as_df():
     """
     Get the table from GRIST to fetch all infos about index pages to create
 
@@ -605,6 +613,13 @@ def get_website_merge_as_df():
 
     Returns:
         A pd dataframe with columns matching the template variable names
+
+    Example:
+    >>> get_website_merge_as_df()
+    >>> get_website_merge_as_df()
+    id  ...                                     my_table_title
+0    2  ...  Travaux méthodologiques sur l'enquête Budget d...
+[17 rows x 12 columns]
     """
     # fetch all the rows
     api_merge = get_grist_merge_website_login()
@@ -637,3 +652,34 @@ def get_website_merge_as_df():
     new_website_df = new_website_df.rename(columns=variable_mapping)
 
     return new_website_df
+
+
+def fill_all_templates_from_grist(template_file='ssphub_directory/template.qmd', directory='ssphub_directory'):
+    """
+    Wrapper of fill_template to automate creation of pages from the grist table
+
+    Arg:
+        template_file (string): the path of the template to use
+        directory (string): the root directory where to save the files
+
+    Returns:
+        None
+
+    Example:
+    >>> fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), 'ssphub_directory')
+    """
+    fill_template(template_file, get_grist_merge_as_df(), directory)
+
+
+if __name__ == '__main__':
+    path = '.temp/'
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+    path = 'ssphub_directory/test/'
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+    fill_all_templates_from_grist()
+    generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
+

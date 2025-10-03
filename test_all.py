@@ -1,7 +1,5 @@
 from ssphub_directory.my_functions import *
 
-generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
-
 def test_generate_email():
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
 
