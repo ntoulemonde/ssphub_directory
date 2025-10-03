@@ -74,6 +74,22 @@ def process_qmd_file(qmd_content, qmd_output_file, newsletter_url='https://ssphu
 
 
 def clean_yaml_header(yaml_header, newsletter_url):
+    """
+    Function to transform Yaml header of an index.qmd file and transform it for a qmd file that will be
+    knitted to html
+
+    Arg :
+    - yaml_header: input yaml_header to clean, as string
+    - newsletter_url: url of the newsletter to insert a link to that newsletter
+
+    Returns:
+    - url to raw Qmd newsletter
+    - Output format : a string, with Unicode formating
+
+    Example:
+
+    """
+
     # Parse the YAML header1
     yaml_data = yaml.safe_load(yaml_header)
 
@@ -98,7 +114,7 @@ def clean_yaml_header(yaml_header, newsletter_url):
         }
 
     # Convert the cleaned YAML back to a string
-    cleaned_yaml_str = yaml.dump(cleaned_yaml, sort_keys=False,  allow_unicode= True, width=4096)
+    cleaned_yaml_str = yaml.dump(cleaned_yaml, sort_keys=False,  allow_unicode=True, width=4096)
     return cleaned_yaml_str
 
 
@@ -113,14 +129,60 @@ def knit_to_html(processed_qmd_file):
 
 
 def raw_url_newsletter(number, branch='main'):
+    """
+    Function to get url of raw Qmd files of a newsletter on SSPHub repo
+
+    Arg :
+    - number: number of the newsletter
+    - branch: branch of the repo to look for
+
+    Returns:
+    - Url to raw Qmd newsletter
+    - Output format: a string
+    """
     return f"https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/{branch}/infolettre/infolettre_{number}/index.qmd"
 
 
 def published_url_newsletter(number):
+    """
+    Function to generate url of published newsletter on SSPHub website
+
+    Arg :
+    - number: number of the newsletter
+
+    Returns:
+    - url to ssphub website of the given newsletter
+    - Output format: a string
+
+    Example:
+    published_url_newsletter('19')
+    'https://ssphub.netlify.app/infolettre/infolettre_19/'
+    """
     return f"https://ssphub.netlify.app/infolettre/infolettre_{number}/"
 
 
-def list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch='main'):
+def list_raw_image_files(repo_owner, repo_name, subfolder_path, branch='main'):
+    """
+    List image files present in a given github folder. Images are defined by the following formats
+    ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp')
+
+    Arg :
+    - repo_owner : name of the owner of the repo in Github
+    - repo_name : name of the Github repo
+    - subfolder_path : in the given repo architecture, a subfolder path to the folder where you want to list all files.
+    For example : infolettre/infolettre_19/
+    - branch where the newsletter is (main by default)
+
+    Returns:
+    - url to the raw images files
+    - Output format: a list of strings
+
+    Example:
+    list_raw_image_files('InseeFrLab', 'ssphub', 'infolettre/infolettre_19', branch='main')
+    ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
+    'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
+
+    """
     # GitHub API URL to list contents of a subfolder
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/contents/{subfolder_path}?ref={branch}"
 
@@ -135,7 +197,7 @@ def list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch=
         # Filter image files (assuming common image extensions)
         image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp'}
         image_files = [
-            item['path'] for item in contents
+            f'https://raw.githubusercontent.com/{repo_owner}/{repo_name}/refs/heads/{branch}/{item['path']}' for item in contents
             if item['type'] == 'file' and os.path.splitext(item['name'])[1].lower() in image_extensions
         ]
 
@@ -145,28 +207,57 @@ def list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch=
         return None
 
 
-def get_image_files_for_newsletter(number, branch='main'):
+def list_image_files_for_newsletter(number, branch='main'):
+    """
+    Wrapper of list_raw_image_files. List image files present in the github folder InseeFrLab, repo ssphub. Ima
+
+    Arg :
+    - number of the newsletter
+    - branch where the newsletter is (main by default)
+
+    Returns:
+    - list of path to the raw images files
+
+    Example:
+    list_image_files_for_newsletter('19', branch='main')
+    ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
+    'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
+
+    """
     repo_owner = 'InseeFrLab'
     repo_name = 'ssphub'
     subfolder_path = f'infolettre/infolettre_{number}'
 
-    return list_image_files_in_subfolder(repo_owner, repo_name, subfolder_path, branch)
+    return list_raw_image_files(repo_owner, repo_name, subfolder_path, branch)
 
 
-def download_image_file(repo_owner, repo_name, file_path, branch='main', output_dir='.temp'):
-    # GitHub API URL to fetch the raw content of the file
-    url = f"https://raw.githubusercontent.com/{repo_owner}/{repo_name}/{branch}/{file_path}"
+def download_file(file_url, output_dir='.temp'):
+    """
+    Downloads a file from given url and store it in output_dir
+
+    Arg:
+    - file_url: url of the file to download, as a string
+    - output_dir: directory where to save the file to, as a string
+
+    Returns:
+    - nothing
+    - print if download was successfull
+
+    Example:
+    download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+    Image file downloaded to .temp/2025_09_back_school.png
+    """
 
     try:
         # Send a GET request to the GitHub API
-        response = requests.get(url)
+        response = requests.get(file_url)
         response.raise_for_status()  # Raise an exception for HTTP errors
 
         # Create the output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
         # Extract the file name from the file path
-        file_name = os.path.basename(file_path)
+        file_name = os.path.basename(file_url)
 
         # Save the file to the output directory
         output_path = os.path.join(output_dir, file_name)
@@ -179,20 +270,33 @@ def download_image_file(repo_owner, repo_name, file_path, branch='main', output_
         print(f"Error downloading image file: {e}")
 
 
-def download_image_files_for_newsletter(number, branch='main', output_dir='.temp'):
-    repo_owner = 'InseeFrLab'
-    repo_name = 'ssphub'
+def download_images_for_newsletter(number, branch='main', output_dir='.temp'):
+    """
+    Download all image files from given newsletter number and branch and store it in output_dir
 
+    Arg:
+    - number: number of the newsletter whose images will be downloaded, as a string
+    - branch: repo branch of the newsletter (main for published newsletter, other for non published newsletters)
+    - output_dir: directory where to save the files to, as a string
+
+    Returns:
+    - nothing
+    - nb : a message is printed if download was successfull
+
+    Example:
+    download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+    Image file downloaded to .temp/2025_09_back_school.png
+    """
     # Get the list of image files in the subfolder
-    image_files = get_image_files_for_newsletter(number, branch)
+    image_files = list_image_files_for_newsletter(number, branch)
 
     if not image_files:
         print("No image files found in the subfolder.")
 
     # Download each image file
     downloaded_files = []
-    for image_file in image_files:
-        downloaded_file = download_image_file(repo_owner, repo_name, image_file, branch, output_dir)
+    for image_file_url in image_files:
+        downloaded_file = download_file(image_file_url, output_dir)
         if downloaded_file:
             downloaded_files.append(downloaded_file)
 
@@ -200,11 +304,28 @@ def download_image_files_for_newsletter(number, branch='main', output_dir='.temp
 
 
 def generate_email(number, branch, email_object, email_dest, drop_temp=True):
+    """
+    Generates the draft email for a newsletter in the folder '.temp/'. Built on previous functions.
+
+    Arg:
+    - number (string): number of the newsletter to turn into email
+    - branch (string): repo branch of the newsletter to turn into email (main for published newsletter, other for non published newsletters)
+    - email_object (string): object of the email
+    - email_dest (string) : list of email adresses to send the email to.
+    - drop_temp (boolean): if temporary knitted files should be removed after knitting. Default is true
+
+    Returns:
+    - nothing
+
+    Example:
+    download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+    Image file downloaded to .temp/2025_09_back_school.png
+    """
     temp_file = './.temp/temp'
     temp_file_qmd = temp_file + '.qmd'
     temp_file_html = temp_file + '.html'
 
-    download_image_files_for_newsletter(number, branch, '.temp')
+    download_images_for_newsletter(number, branch, '.temp')
 
     qmd_content = fetch_qmd_file(raw_url_newsletter(number, branch))
     process_qmd_file(qmd_content, temp_file_qmd, published_url_newsletter(number))
@@ -238,8 +359,8 @@ def get_directory_as_df():
     cols_to_keep = [
         'email', 'Supprimez_mon_compte', 'nom'
         ]
-    directory_df = (directory_df.loc[:,cols_to_keep]
-                                .assign(Nom_domaine= lambda df: df.email.str.split('@').str[1])
+    directory_df = (directory_df.loc[:, cols_to_keep]
+                                .assign(Nom_domaine=lambda df: df.email.str.split('@').str[1])
                    )
 
     return directory_df
@@ -248,7 +369,7 @@ def get_directory_as_df():
 def get_emails():
     """
     Extract all emails that have not asked to be deteled from directory
-    
+
     Returns:
         a single string with joined emails : '<email1@com.com>;<email2@fr.fr>'
     """
@@ -303,7 +424,7 @@ def export_list_to_csv(data_list, file_path):
             writer.writerow([item])
 
 
-#     UNUSED FOR NOW - A FIRST BRICK TO BUILD ON A FUNCTION TO AUTOMATICALLY DELETE ROWS BASED ON IDS
+#     UNUSED FOR NOW - A FIRST BRICK TO BUILD ON A FUNCTION TO AUTOMATICALLY DELETE ROWS BASED ON IDs
 # def get_ids_of_email(emails_list):
 #     """
 #     Return the ids of the rows of the email in the GRIST directory
@@ -315,7 +436,7 @@ def export_list_to_csv(data_list, file_path):
 #         list: A list of ids of the rows in df
 
 #     """
-#     # Get the latest GRIST directory 
+#     # Get the latest GRIST directory
 #     api_directory = get_api_login()
 #     directory_df = api_directory.fetch_table('Contact')
 #     directory_df = pd.DataFrame(directory_df)
@@ -326,9 +447,8 @@ def export_list_to_csv(data_list, file_path):
 #     # Filter the emails
 #     res = directory_df[directory_df['email'].isin(emails_df['emails'])]
 #     res = res['id'].values.tolist()
-    
-#     return res
 
+#     return res
 
 
 def ensure_folders_exist(file_path):
@@ -343,7 +463,7 @@ def ensure_folders_exist(file_path):
 
     # Split the path into its components
     path_components = normalized_path.split(os.sep)
-   
+
     # Remove the last component if it is a file
     if '.' in path_components[-1]:
         path_components = path_components[:-1]
@@ -376,7 +496,7 @@ def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
     with open(path_to_template, 'r') as file:
         template_content = file.read()
 
-    if path_to_output is not None: 
+    if path_to_output is not None:
         df['nom_dossier'] = path_to_output + df['nom_dossier'] + '/index.qmd'
     else:
         df['nom_dossier'] = df['nom_dossier'] + '/index.qmd'
@@ -385,9 +505,7 @@ def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
-            print('{{'+ variable_name + '}} : ' + str(variable_value))
-            template_content = template_content.replace('{{'+ variable_name + '}}', str(variable_value))
-
+            template_content = template_content.replace('{{' + variable_name + '}}', str(variable_value))
 
         ensure_folders_exist(str(row['nom_dossier']))
         with open(path_to_output, 'w') as res_file:
@@ -410,9 +528,9 @@ def get_website_merge_as_df():
     """
     Get the table from GRIST to fetch all infos about index pages to create
 
-    Arg: 
+    Arg:
         None
-    
+
     Returns:
         A pd dataframe with columns matching the template variable names
     """
@@ -428,8 +546,6 @@ def get_website_merge_as_df():
     new_website_df = new_website_df[cols_to_keep]
 
     new_website_df['Titre_Tab'] = new_website_df['Titre']
-    new_website_df['Titre'] = '"' + new_website_df['Titre'] + '"'
-    # new_website_df['sous_titre'] = '"' + new_website_df['sous_titre'] + '"'
 
     # Dictionnary for renaming variables / Right part must correspond to template keywords
     variable_mapping = {
@@ -442,11 +558,10 @@ def get_website_merge_as_df():
         'Details_du_projet': 'my_table_details',
         'Acteurs': 'my_table_actors',
         'Resultats': 'my_table_results',
-        'Code_du_projet': 'my_table_repo_path', 
-        'Titre_Tab':'my_table_title'
+        'Code_du_projet': 'my_table_repo_path',
+        'Titre_Tab': 'my_table_title'
     }
 
     new_website_df = new_website_df.rename(columns=variable_mapping)
 
     return new_website_df
-

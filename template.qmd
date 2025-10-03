@@ -1,9 +1,9 @@
 ---
-title: {{my_title}}
+title: "{{my_title}}"
 
 # Summary for listings and search engines
 description: |
-  {{my_description}}
+  "{{my_description}}"
 
 format: html
 
