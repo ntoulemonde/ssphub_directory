@@ -568,7 +568,7 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
         template_content = file.read()
 
     # Add directory before the output folder in df
-    df['nom_dossier'] = directory_output.str.strip('/') + '/' + df['nom_dossier'].str.strip('/')
+    df['nom_dossier'] = directory_output.strip('/') + '/' + df['nom_dossier'].str.strip('/')
 
     for index, row in df.iterrows():
         for column in df.columns:
