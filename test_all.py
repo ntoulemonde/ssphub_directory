@@ -1,18 +1,19 @@
 from ssphub_directory.my_functions import *
 
+generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
 
 def test_generate_email():
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
 
 def test_extract_emails():
-    assert "nicolas.toulemonde@insee.fr" in extract_emails()
+    assert "nicolas.toulemonde@insee.fr" in extract_emails_from_txt()
     
 # def test_export_list_to_csv():
-#     export_list_to_csv(extract_emails(), 'output/temp.csv')
+#     export_list_to_csv(extract_emails_from_txt(), 'output/temp.csv')
 
 def test_fill_template():
     # Create a test DataFrame with the variables to replace
-    test_data = pd.DataFrame({
+    df = pd.DataFrame({
         'my_title': ['Title test'],
         'my_description': ['Description test'],
         'my_authors': ['- John \n- Jackie'],
@@ -24,10 +25,11 @@ def test_fill_template():
         'my_table_actors': ['- John <br> - Jackie'],
         'my_table_contact': ['Contact Info test'],
         'my_table_results': ['- I have several results available [here](https://www.google.com/) <br> - and another one [here](https://www.qwant.fr)'],
-        'my_table_repo_path': ['- [here](https://www.google.com/) <br>- or [here](https://www.google.com/)']
+        'my_table_repo_path': ['- [here](https://www.google.com/) <br>- or [here](https://www.google.com/)'], 
+        'nom_dossier': ['test/mytest']
     })
-    
-    fill_template('ssphub_directory/template.qmd', test_data, 'ssphub_directory/test/mon_modele.qmd')
+
+    fill_template('ssphub_directory/template.qmd', df, 'ssphub_directory/')
 
 def test_website_merge():
     # df = get_website_merge_as_df().head(1)

@@ -418,6 +418,10 @@ def export_list_to_csv(data_list, file_path):
         file_path (str): The path to the CSV file.
     """
 
+    # Create the directory if it does not exist
+    os.makedirs(file_path)
+
+    # Writing the CSV
     with open(file_path, 'w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file)
         for item in data_list:
@@ -451,38 +455,6 @@ def export_list_to_csv(data_list, file_path):
 #     return res
 
 
-def ensure_folders_exist(file_path):
-    """
-    Ensure that every folder in the given file path exists. If any folder is missing, create it.
-
-    Args:
-        file_path (str): The file path to check and create folders for.
-    """
-    # Normalize the path to handle any relative path components
-    normalized_path = os.path.normpath(file_path)
-
-    # Split the path into its components
-    path_components = normalized_path.split(os.sep)
-
-    # Remove the last component if it is a file
-    if '.' in path_components[-1]:
-        path_components = path_components[:-1]
-
-    # Initialize the current path
-    current_path = path_components[0]
-
-    # Iterate over the path components
-    for component in path_components[1:]:
-        # Update the current path
-        current_path = os.path.join(current_path, component)
-
-        # Check if the current path is a directory
-        if not os.path.isdir(current_path):
-            # Create the directory if it does not exist
-            os.makedirs(current_path)
-            print(f"Created directory: {current_path}")
-
-
 def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
     """
     Update the variables in a template QMD file with the ones from a data table.
@@ -492,14 +464,11 @@ def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
         qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
         path_to_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
     """
-
     with open(path_to_template, 'r') as file:
         template_content = file.read()
 
-    if path_to_output is not None:
-        df['nom_dossier'] = path_to_output + df['nom_dossier'] + '/index.qmd'
-    else:
-        df['nom_dossier'] = df['nom_dossier'] + '/index.qmd'
+    # Add path to output before the one in df
+    df['nom_dossier'] = path_to_output + '/' + df['nom_dossier'].str.strip('/')
 
     for index, row in df.iterrows():
         for column in df.columns:
@@ -507,8 +476,15 @@ def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
             variable_value = row[column]
             template_content = template_content.replace('{{' + variable_name + '}}', str(variable_value))
 
-        ensure_folders_exist(str(row['nom_dossier']))
-        with open(path_to_output, 'w') as res_file:
+        # Create the output directory if it doesn't exist
+        os.makedirs(row['nom_dossier'], exist_ok=True)
+
+        output_file_path = row['nom_dossier'] + '/index.qmd'
+        # If the file exists, we remove it
+        if os.path.exists(output_file_path) and os.path.isfile(output_file_path):
+            os.remove(output_file_path)
+
+        with open(output_file_path, 'w') as res_file:
             res_file.write(template_content)
 
     return template_content
