@@ -14,27 +14,47 @@ from email.mime.multipart import MIMEMultipart  # To generate the draft email
 from email.mime.text import MIMEText  # To generate the draft email
 import requests  # To transform newsletter into email, call Github API and download files
 import yaml  # To update newsletter qmd metadata for the email
-import os  # to remove temporary files
+import os  # to remove temporary files, create directory etc
 from grist_api import GristDocAPI  # To get directory emails
 import pandas as pd  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
 
 
-def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
-    # Create a multipart message
+def generate_eml_file(email_body, subject, bcc_recipient, to_recipient=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
+    """
+    Creates an .eml file and saves it to .temp/email.eml
+
+    Args:
+        email_body (string): html body of the email
+        subject (string): Object of the email
+        bcc_recipient (string): list of recipients of the emails. 
+        to_recipient (string): Email of the sender to indicate (be cautious, it doesn't automate the sending)
+
+    Returns:
+        None
+    Nb : create the email to .temp/email.eml with a message
+
+    Example:
+    >>> generate_eml_file('body', 'this an email', 'test@test.fr')
+    Email saved as .temp/email.eml
+    """
     msg = MIMEMultipart()
     msg['Subject'] = subject
-    msg['BCC'] = recipient
-    msg['To'] = sender_email   # Auto send the email
+    msg['BCC'] = bcc_recipient
+    msg['To'] = to_recipient   # Auto send the email
     msg['From'] = 'SELECT THE RIGHT EMAIL'  # Set the sender's email address
-    msg['X-Unsent'] = '1'  # Mark the email as unsent : when he file is opened, it can be sent.
+    msg['X-Unsent'] = '1'  # Mark the email as unsent : when the file is opened, it can be sent.
 
     # Attach the HTML body
     msg.attach(MIMEText(email_body, 'html'))
 
     # Save the email as an .eml file
     eml_file_path = '.temp/email.eml'
+
+    # Create the output directory if it doesn't exist
+    os.makedirs('.temp', exist_ok=True)
+
     with open(eml_file_path, 'wb') as f:
         f.write(msg.as_bytes())
 
@@ -42,7 +62,20 @@ def generate_eml_file(email_body, recipient, subject, sender_email=":DG75-SSPHUB
 
 
 def fetch_qmd_file(url):
-    # get the qmf file from an url and return it as string
+    """
+    get the qmf file from an url and return it as string
+
+    Args:
+        url (string): the qmd url to fetch. Usually a github raw URL
+
+    Returns:
+        (string) the text of the qmd file
+
+    Example:
+    >>> fetch_qmd_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/index.qmd')
+    '---\ntitle: "La rentrée 2025: actualités, nouveautés, interview de rentrée"\n\ndescription: |\n  Infolettre du mois de 
+    __Septembre 2025__\n\n# Date published\ndate: \'2025-09-29\'\nnumber: 19\n\nauthors:\n ......'
+    """
     try:
         response = requests.get(url)
         response.raise_for_status()
@@ -53,6 +86,26 @@ def fetch_qmd_file(url):
 
 
 def process_qmd_file(qmd_content, qmd_output_file, newsletter_url='https://ssphub.netlify.app/infolettre/'):
+    """
+    Transform a newsletter qmd file to a qmd file that will be knitted by
+    calling the function to transform the yaml part of the qmd file
+
+    Args:
+        qmd_content (string): the original qmd file to process, typically the result of fetch_qmd_file
+        qmd_output_file (string): the path of the qmd file to write
+        newsletter_url (string): to pass the argument onto yaml to insert link to newsletter
+
+    Returns:
+        None
+    Nb : writes the processed qmd file
+
+    Example:
+    >>> process_qmd_file(
+    fetch_qmd_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/index.qmd'),
+    'cleaned_index.qmd')
+    """
+
+    # qmd_content = fetch_qmd_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/index.qmd')
     # Split the YAML header and the HTML content
     parts = qmd_content.split('---', 2)
     if len(parts) < 3:
@@ -76,17 +129,24 @@ def process_qmd_file(qmd_content, qmd_output_file, newsletter_url='https://ssphu
 def clean_yaml_header(yaml_header, newsletter_url):
     """
     Function to transform Yaml header of an index.qmd file and transform it for a qmd file that will be
-    knitted to html
+    knitted to html. It keeps only title, updates the description with the link to the website, 
+    add lang, format and format options, including a css file.
 
     Arg :
-    - yaml_header: input yaml_header to clean, as string
-    - newsletter_url: url of the newsletter to insert a link to that newsletter
+        yaml_header: input yaml_header to clean, as string
+        newsletter_url: url of the newsletter to insert a link to that newsletter
 
     Returns:
-    - url to raw Qmd newsletter
-    - Output format : a string, with Unicode formating
+        (string, with Unicode formating) url to raw Qmd newsletter
 
     Example:
+    >>> clean_yaml_header(
+        '\ntitle: "La rentrée 2025:"\n\ndescription: |\n  Infolettre de __Septembre 2025__
+        \n\n# Date published\ndate: \'2025-09-29\'\nnumber: 19\n\nauthors:\n  - Nicolas\n\nimage: mage.png\n\ntags:\n
+        - datavis\n  - IA \n\ncategories:\n  - Infolettre\n\n',
+        'https://ssphub.netlify.app/infolettre/'
+        )
+    "title: 'La rentrée 2025:'\ndescription: '*Infolettre de __Septembre 2025__ disponible sur le site du [réseau](https://ssphub.netlify.app/infolettre/)*'\nlang: fr\nformat:\n  html:\n    self-contained: true\n    css: ../ssphub_directory/email_style/style.css\n"
 
     """
 
@@ -119,6 +179,16 @@ def clean_yaml_header(yaml_header, newsletter_url):
 
 
 def knit_to_html(processed_qmd_file):
+    """
+    knit a qmd file to html 
+
+    Args:
+        processed_qmd_file (string): file path to the qmd file to knit
+
+    Returns:
+        None
+    Saves the knitted file with same name as qmd file, same folder
+    """
     # Use the Quarto CLI to knit the QMD file to HTML
     import subprocess
     try:
@@ -133,12 +203,11 @@ def raw_url_newsletter(number, branch='main'):
     Function to get url of raw Qmd files of a newsletter on SSPHub repo
 
     Arg :
-    - number: number of the newsletter
-    - branch: branch of the repo to look for
+        number: number of the newsletter
+        branch: branch of the repo to look for
 
     Returns:
-    - Url to raw Qmd newsletter
-    - Output format: a string
+        (string) Url to raw Qmd newsletter
     """
     return f"https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/{branch}/infolettre/infolettre_{number}/index.qmd"
 
@@ -148,14 +217,14 @@ def published_url_newsletter(number):
     Function to generate url of published newsletter on SSPHub website
 
     Arg :
-    - number: number of the newsletter
+        number: number of the newsletter
 
     Returns:
-    - url to ssphub website of the given newsletter
-    - Output format: a string
+        url to ssphub website of the given newsletter
+        Output format: a string
 
     Example:
-    published_url_newsletter('19')
+    >>> published_url_newsletter('19')
     'https://ssphub.netlify.app/infolettre/infolettre_19/'
     """
     return f"https://ssphub.netlify.app/infolettre/infolettre_{number}/"
@@ -167,18 +236,18 @@ def list_raw_image_files(repo_owner, repo_name, subfolder_path, branch='main'):
     ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.svg', '.webp')
 
     Arg :
-    - repo_owner : name of the owner of the repo in Github
-    - repo_name : name of the Github repo
-    - subfolder_path : in the given repo architecture, a subfolder path to the folder where you want to list all files.
+        repo_owner : name of the owner of the repo in Github
+        repo_name : name of the Github repo
+        subfolder_path : in the given repo architecture, a subfolder path to the folder where you want to list all files.
     For example : infolettre/infolettre_19/
-    - branch where the newsletter is (main by default)
+        branch where the newsletter is (main by default)
 
     Returns:
-    - url to the raw images files
-    - Output format: a list of strings
+        url to the raw images files
+        Output format: a list of strings
 
     Example:
-    list_raw_image_files('InseeFrLab', 'ssphub', 'infolettre/infolettre_19', branch='main')
+    >>> list_raw_image_files('InseeFrLab', 'ssphub', 'infolettre/infolettre_19', branch='main')
     ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
     'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
 
@@ -212,14 +281,14 @@ def list_image_files_for_newsletter(number, branch='main'):
     Wrapper of list_raw_image_files. List image files present in the github folder InseeFrLab, repo ssphub. Ima
 
     Arg :
-    - number of the newsletter
-    - branch where the newsletter is (main by default)
+        number of the newsletter
+        branch where the newsletter is (main by default)
 
     Returns:
-    - list of path to the raw images files
+        list of path to the raw images files
 
     Example:
-    list_image_files_for_newsletter('19', branch='main')
+    >>> list_image_files_for_newsletter('19', branch='main')
     ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
     'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
 
@@ -236,15 +305,15 @@ def download_file(file_url, output_dir='.temp'):
     Downloads a file from given url and store it in output_dir
 
     Arg:
-    - file_url: url of the file to download, as a string
-    - output_dir: directory where to save the file to, as a string
+        file_url: url of the file to download, as a string
+        output_dir: directory where to save the file to, as a string
 
     Returns:
-    - nothing
-    - print if download was successfull
+        nothing
+        print if download was successfull
 
     Example:
-    download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+    >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
     Image file downloaded to .temp/2025_09_back_school.png
     """
 
@@ -275,16 +344,16 @@ def download_images_for_newsletter(number, branch='main', output_dir='.temp'):
     Download all image files from given newsletter number and branch and store it in output_dir
 
     Arg:
-    - number: number of the newsletter whose images will be downloaded, as a string
-    - branch: repo branch of the newsletter (main for published newsletter, other for non published newsletters)
-    - output_dir: directory where to save the files to, as a string
+        number: number of the newsletter whose images will be downloaded, as a string
+        branch: repo branch of the newsletter (main for published newsletter, other for non published newsletters)
+        output_dir: directory where to save the files to, as a string
 
     Returns:
-    - nothing
-    - nb : a message is printed if download was successfull
+        nothing
+        nb : a message is printed if download was successfull
 
     Example:
-    download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+    >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
     Image file downloaded to .temp/2025_09_back_school.png
     """
     # Get the list of image files in the subfolder
@@ -308,17 +377,17 @@ def generate_email(number, branch, email_object, email_dest, drop_temp=True):
     Generates the draft email for a newsletter in the folder '.temp/'. Built on previous functions.
 
     Arg:
-    - number (string): number of the newsletter to turn into email
-    - branch (string): repo branch of the newsletter to turn into email (main for published newsletter, other for non published newsletters)
-    - email_object (string): object of the email
-    - email_dest (string) : list of email adresses to send the email to.
-    - drop_temp (boolean): if temporary knitted files should be removed after knitting. Default is true
+        number (string): number of the newsletter to turn into email
+        branch (string): repo branch of the newsletter to turn into email (main for published newsletter, other for non published newsletters)
+        email_object (string): object of the email
+        email_dest (string) : list of email adresses to send the email to.
+        drop_temp (boolean): if temporary knitted files should be removed after knitting. Default is true
 
     Returns:
-    - nothing
+        None
 
     Example:
-    download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+    >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
     Image file downloaded to .temp/2025_09_back_school.png
     """
     temp_file = './.temp/temp'
@@ -332,14 +401,23 @@ def generate_email(number, branch, email_object, email_dest, drop_temp=True):
     knit_to_html(temp_file_qmd)
 
     with open(temp_file_html, 'r', encoding="utf-8") as f:
-        generate_eml_file(f.read(), email_dest, email_object)
+        generate_eml_file(f.read(), email_object, email_dest)
 
     if drop_temp:
         os.remove(temp_file_qmd)
         os.remove(temp_file_html)
 
 
-def get_api_login():
+def get_grist_directory_login():
+    """
+    Send back GRIST API login details
+
+    Args:
+        None
+
+    Returns:
+        A GristDocAPI object
+    """
     # Log in to GRIST API
     SERVER = "https://grist.numerique.gouv.fr/"
     DOC_ID = os.environ['SSPHUB_DIRECTORY_ID']
@@ -350,8 +428,17 @@ def get_api_login():
 
 
 def get_directory_as_df():
+    """
+    Fetch back direcory of SSPHUB as a Panda dataframe
+
+    Args:
+        None
+
+    Returns:
+        A pd.DataFrame with three columns : ['email', 'Supprimez_mon_compte', 'nom', 'Nom_domaine']
+    """
     # fetch all the rows
-    api_directory = get_api_login()
+    api_directory = get_grist_directory_login()
     directory_df = api_directory.fetch_table('Contact')
     directory_df = pd.DataFrame(directory_df)
 
@@ -371,7 +458,11 @@ def get_emails():
     Extract all emails that have not asked to be deteled from directory
 
     Returns:
-        a single string with joined emails : '<email1@com.com>;<email2@fr.fr>'
+        a single string with joined emails separated by ;
+
+    Example:
+    >>> get_emails()
+    '<myemail@example.com>; <myemail2@example.com>'
     """
     my_directory_df = get_directory_as_df()
     my_directory_df = (my_directory_df.query('Supprimez_mon_compte == False')
@@ -379,6 +470,7 @@ def get_emails():
                                       )
     # Turning emails from myemail@example.com to <myemail@example.com>
     my_directory_df['email'] = '<' + my_directory_df['email'] + '>'
+    # Joining all emails into one string '<myemail@example.com>; <myemail2@example.com>'
     return '; '.join(my_directory_df['email'])
 
 
@@ -416,6 +508,10 @@ def export_list_to_csv(data_list, file_path):
     Args:
         data_list (list): The list to export.
         file_path (str): The path to the CSV file.
+
+    Returns:
+        None
+
     """
 
     # Create the directory if it does not exist
@@ -441,7 +537,7 @@ def export_list_to_csv(data_list, file_path):
 
 #     """
 #     # Get the latest GRIST directory
-#     api_directory = get_api_login()
+#     api_directory = get_grist_directory_login()
 #     directory_df = api_directory.fetch_table('Contact')
 #     directory_df = pd.DataFrame(directory_df)
 
@@ -490,7 +586,7 @@ def fill_template(path_to_template, df, path_to_output='ssphub_directory/'):
     return template_content
 
 
-def get_api_website_login():
+def get_grist_merge_website_login():
     # Log in to GRIST API
     SERVER = "https://grist.numerique.gouv.fr/"
     DOC_ID = os.environ['SSPHUB_WEBSITE_MERGE_ID']
@@ -511,7 +607,7 @@ def get_website_merge_as_df():
         A pd dataframe with columns matching the template variable names
     """
     # fetch all the rows
-    api_merge = get_api_website_login()
+    api_merge = get_grist_merge_website_login()
     new_website_df = api_merge.fetch_table('Intranet_details')
     new_website_df = pd.DataFrame(new_website_df)
 
