@@ -16,7 +16,6 @@ import requests  # To transform newsletter into email, call Github API and downl
 import yaml  # To update newsletter qmd metadata for the email
 import os  # to remove temporary files, create directory etc
 from grist_api import GristDocAPI  # To get directory emails
-import pandas as pd  # to manage directory emails
 import polars as pl  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
@@ -455,32 +454,6 @@ def get_directory_as_df():
     return directory_df
 
 
-def get_directory_as_df_old():
-    """
-    Fetch back direcory of SSPHUB as a Panda dataframe
-
-    Args:
-        None
-
-    Returns:
-        A pd.DataFrame with three columns : ['email', 'Supprimez_mon_compte', 'nom', 'Nom_domaine']
-    """
-    # fetch all the rows
-    api_directory = get_grist_directory_login()
-    directory_df = api_directory.fetch_table('Contact')
-    directory_df = pd.DataFrame(directory_df)
-
-    # Selecting minimum set of columns and recreating domain name
-    cols_to_keep = [
-        'email', 'Supprimez_mon_compte', 'nom'
-        ]
-    directory_df = (directory_df.loc[:, cols_to_keep]
-                                .assign(Nom_domaine=lambda df: df.email.str.split('@').str[1])
-                   )
-
-    return directory_df
-
-
 def get_emails():
     """
     Extract all emails that have not asked to be deteled from directory
@@ -584,7 +557,7 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
     Update the variables in a template QMD file with the ones from a data table.
 
     Args:
-        df (Panda object): data frame where to have the values. A column must be named 'nom_dossier'
+        df (Polars object): data frame where to have the values. A column must be named 'nom_dossier'
         qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
         directory_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
         !!! Don't put / at the end . For example : test is OK but test/ NOT OK
@@ -593,9 +566,9 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
         template_content = file.read()
 
     # Add directory before the output folder in df
-    df['nom_dossier'] = directory_output.strip('/') + '/' + df['nom_dossier'].str.strip('/')
+    df.with_columns(directory_output.strip('/') + '/' + pl.col('nom_dossier').str.strip_chars('/'))
 
-    for index, row in df.iterrows():
+    for row in df.iter_rows(named=True):
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
@@ -637,7 +610,7 @@ def get_grist_merge_as_df():
         None
 
     Returns:
-        A pd dataframe with columns matching the template variable names
+        A pl dataframe with columns matching the template variable names
 
     Example:
         >>> get_grist_merge_as_df()
@@ -649,21 +622,23 @@ def get_grist_merge_as_df():
     # fetch all the rows
     api_merge = get_grist_merge_website_login()
     new_website_df = api_merge.fetch_table('Intranet_details')
-    new_website_df = pd.DataFrame(new_website_df)
+    new_website_df = pl.DataFrame(new_website_df)
 
     # Selecting useful columns
     cols_to_keep = ['id', 'Acteurs', 'Resultats', 'Details_du_projet',
        'sous_titre', 'Code_du_projet', 'tags', 'nom_dossier', 'date',
        'image', 'Titre']
-    new_website_df = new_website_df[cols_to_keep]
+    new_website_df = (new_website_df.select(cols_to_keep)
+                                    .with_columns(pl.col('Titre').alias("Titre_Tab"))
+    )
 
-    new_website_df['Titre_Tab'] = new_website_df['Titre']
+    # new_website_df['Titre_Tab'] = new_website_df['Titre']
 
     # Dictionnary for renaming variables / Right part must correspond to template keywords
     variable_mapping = {
         'Titre': 'my_title',
         'sous_titre': 'my_description',
-        'auteurs': 'my_authors',
+        # 'auteurs': 'my_authors',
         'date': 'my_date',
         'image': 'my_image_path',
         'tags': 'my_categories',
@@ -674,7 +649,7 @@ def get_grist_merge_as_df():
         'Titre_Tab': 'my_table_title'
     }
 
-    new_website_df = new_website_df.rename(columns=variable_mapping)
+    new_website_df = new_website_df.rename(variable_mapping)
 
     return new_website_df
 
@@ -707,5 +682,4 @@ if __name__ == '__main__':
 
     fill_all_templates_from_grist()
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
-
 

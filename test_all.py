@@ -38,6 +38,24 @@ def test_website_merge():
 def test_update_polars():
     print(get_directory_as_df())
 
-def test_update_polars():
+def test_update_polars2():
     get_emails()
 
+def test_update_polars3():
+    get_grist_merge_as_df()
+
+def test_global():
+    path = '.temp/'
+    if os.path.exists(path):
+        shutil.rmtree(path)
+
+    path = 'ssphub_directory/test/'
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    
+    path = 'test/'
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    
+    fill_all_templates_from_grist()
+    generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
