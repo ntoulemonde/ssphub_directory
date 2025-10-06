@@ -31,6 +31,13 @@ def test_fill_template():
 
 def test_website_merge():
     # df = get_website_merge_as_df().head(1)
-    df = get_website_merge_as_df()
+    df = get_grist_merge_as_df()
     fill_template('ssphub_directory/template.qmd', df)
+
+
+def test_update_polars():
+    print(get_directory_as_df())
+
+def test_update_polars():
+    get_emails()
 

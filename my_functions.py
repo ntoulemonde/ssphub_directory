@@ -17,6 +17,7 @@ import yaml  # To update newsletter qmd metadata for the email
 import os  # to remove temporary files, create directory etc
 from grist_api import GristDocAPI  # To get directory emails
 import pandas as pd  # to manage directory emails
+import polars as pl  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
 import shutil  # to remove directory and its content
@@ -37,7 +38,7 @@ def generate_eml_file(email_body, subject, bcc_recipient, to_recipient=":DG75-SS
     Nb : create the email to .temp/email.eml with a message
 
     Example:
-    >>> generate_eml_file('body', 'this an email', 'test@test.fr')
+        >>> generate_eml_file('body', 'this an email', 'test@test.fr')
     Email saved as .temp/email.eml
     """
     msg = MIMEMultipart()
@@ -73,7 +74,7 @@ def fetch_qmd_file(url):
         (string) the text of the qmd file
 
     Example:
-    >>> fetch_qmd_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/index.qmd')
+        >>> fetch_qmd_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/index.qmd')
     '---\ntitle: "La rentrée 2025: actualités, nouveautés, interview de rentrée"\n\ndescription: |\n  Infolettre du mois de 
     __Septembre 2025__\n\n# Date published\ndate: \'2025-09-29\'\nnumber: 19\n\nauthors:\n ......'
     """
@@ -101,7 +102,7 @@ def process_qmd_file(qmd_content, qmd_output_file, newsletter_url='https://ssphu
     Nb : writes the processed qmd file
 
     Example:
-    >>> process_qmd_file(
+        >>> process_qmd_file(
     fetch_qmd_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/index.qmd'),
     'cleaned_index.qmd')
     """
@@ -141,13 +142,13 @@ def clean_yaml_header(yaml_header, newsletter_url):
         (string, with Unicode formating) url to raw Qmd newsletter
 
     Example:
-    >>> clean_yaml_header(
-        '\ntitle: "La rentrée 2025:"\n\ndescription: |\n  Infolettre de __Septembre 2025__
-        \n\n# Date published\ndate: \'2025-09-29\'\nnumber: 19\n\nauthors:\n  - Nicolas\n\nimage: mage.png\n\ntags:\n
-        - datavis\n  - IA \n\ncategories:\n  - Infolettre\n\n',
-        'https://ssphub.netlify.app/infolettre/'
-        )
-    "title: 'La rentrée 2025:'\ndescription: '*Infolettre de __Septembre 2025__ disponible sur le site du [réseau](https://ssphub.netlify.app/infolettre/)*'\nlang: fr\nformat:\n  html:\n    self-contained: true\n    css: ../ssphub_directory/email_style/style.css\n"
+        >>> clean_yaml_header(
+            '\ntitle: "La rentrée 2025:"\n\ndescription: |\n  Infolettre de __Septembre 2025__
+            \n\n# Date published\ndate: \'2025-09-29\'\nnumber: 19\n\nauthors:\n  - Nicolas\n\nimage: mage.png\n\ntags:\n
+            - datavis\n  - IA \n\ncategories:\n  - Infolettre\n\n',
+            'https://ssphub.netlify.app/infolettre/'
+            )
+        "title: 'La rentrée 2025:'\ndescription: '*Infolettre de __Septembre 2025__ disponible sur le site du [réseau](https://ssphub.netlify.app/infolettre/)*'\nlang: fr\nformat:\n  html:\n    self-contained: true\n    css: ../ssphub_directory/email_style/style.css\n"
 
     """
 
@@ -225,8 +226,8 @@ def published_url_newsletter(number):
         Output format: a string
 
     Example:
-    >>> published_url_newsletter('19')
-    'https://ssphub.netlify.app/infolettre/infolettre_19/'
+        >>> published_url_newsletter('19')
+        'https://ssphub.netlify.app/infolettre/infolettre_19/'
     """
     return f"https://ssphub.netlify.app/infolettre/infolettre_{number}/"
 
@@ -248,9 +249,9 @@ def list_raw_image_files(repo_owner, repo_name, subfolder_path, branch='main'):
         Output format: a list of strings
 
     Example:
-    >>> list_raw_image_files('InseeFrLab', 'ssphub', 'infolettre/infolettre_19', branch='main')
-    ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
-    'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
+        >>> list_raw_image_files('InseeFrLab', 'ssphub', 'infolettre/infolettre_19', branch='main')
+        ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
+        'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
 
     """
     # GitHub API URL to list contents of a subfolder
@@ -289,9 +290,9 @@ def list_image_files_for_newsletter(number, branch='main'):
         list of path to the raw images files
 
     Example:
-    >>> list_image_files_for_newsletter('19', branch='main')
-    ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
-    'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
+        >>> list_image_files_for_newsletter('19', branch='main')
+        ['https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png',
+        'https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/measles-cases-historical-us-states-heatmap.png']
 
     """
     repo_owner = 'InseeFrLab'
@@ -314,9 +315,9 @@ def download_file(file_url, output_dir='.temp'):
         print if download was successfull
 
     Example:
-    >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
-    Image file downloaded to .temp/2025_09_back_school.png
-    """
+        >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+        Image file downloaded to .temp/2025_09_back_school.png
+        """
 
     try:
         # Send a GET request to the GitHub API
@@ -354,8 +355,8 @@ def download_images_for_newsletter(number, branch='main', output_dir='.temp'):
         nb : a message is printed if download was successfull
 
     Example:
-    >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
-    Image file downloaded to .temp/2025_09_back_school.png
+        >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+        Image file downloaded to .temp/2025_09_back_school.png
     """
     # Get the list of image files in the subfolder
     image_files = list_image_files_for_newsletter(number, branch)
@@ -388,8 +389,8 @@ def generate_email(number, branch, email_object, email_dest, drop_temp=True):
         None
 
     Example:
-    >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
-    Image file downloaded to .temp/2025_09_back_school.png
+        >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
+        Image file downloaded to .temp/2025_09_back_school.png
     """
     temp_file = './.temp/temp'
     temp_file_qmd = temp_file + '.qmd'
@@ -438,6 +439,30 @@ def get_directory_as_df():
         None
 
     Returns:
+        A pl.DataFrame with three columns : ['email', 'Supprimez_mon_compte', 'nom', 'Nom_domaine']
+    """
+    # fetch all the rows
+    api_directory = get_grist_directory_login()
+    directory_df = api_directory.fetch_table('Contact')
+    directory_df = pl.DataFrame(directory_df, infer_schema_length=None)
+
+    # Selecting minimum set of columns
+    cols_to_keep = [
+        'email', 'Supprimez_mon_compte', 'nom', 'Nom_domaine'
+        ]
+    directory_df = directory_df.select(cols_to_keep)
+
+    return directory_df
+
+
+def get_directory_as_df_old():
+    """
+    Fetch back direcory of SSPHUB as a Panda dataframe
+
+    Args:
+        None
+
+    Returns:
         A pd.DataFrame with three columns : ['email', 'Supprimez_mon_compte', 'nom', 'Nom_domaine']
     """
     # fetch all the rows
@@ -464,15 +489,15 @@ def get_emails():
         a single string with joined emails separated by ;
 
     Example:
-    >>> get_emails()
-    '<myemail@example.com>; <myemail2@example.com>'
+        >>> get_emails()
+        '<myemail@example.com>; <myemail2@example.com>'
     """
     my_directory_df = get_directory_as_df()
-    my_directory_df = (my_directory_df.query('Supprimez_mon_compte == False')
-                                      .sort_values(['Nom_domaine', 'nom'])
+    my_directory_df = (my_directory_df.filter(pl.col('Supprimez_mon_compte') == False)
+                                      .sort(['Nom_domaine', 'nom'])
                                       )
     # Turning emails from myemail@example.com to <myemail@example.com>
-    my_directory_df['email'] = '<' + my_directory_df['email'] + '>'
+    my_directory_df.with_columns('<' + pl.col('email') + '>')
     # Joining all emails into one string '<myemail@example.com>; <myemail2@example.com>'
     return '; '.join(my_directory_df['email'])
 
@@ -615,11 +640,11 @@ def get_grist_merge_as_df():
         A pd dataframe with columns matching the template variable names
 
     Example:
-    >>> get_website_merge_as_df()
-    >>> get_website_merge_as_df()
+        >>> get_grist_merge_as_df()
+        >>> get_grist_merge_as_df()
     id  ...                                     my_table_title
-0    2  ...  Travaux méthodologiques sur l'enquête Budget d...
-[17 rows x 12 columns]
+    0    2  ...  Travaux méthodologiques sur l'enquête Budget d...
+    [17 rows x 12 columns]
     """
     # fetch all the rows
     api_merge = get_grist_merge_website_login()
@@ -666,7 +691,7 @@ def fill_all_templates_from_grist(template_file='ssphub_directory/template.qmd',
         None
 
     Example:
-    >>> fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), 'ssphub_directory')
+        >>> fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), 'ssphub_directory')
     """
     fill_template(template_file, get_grist_merge_as_df(), directory)
 
@@ -682,4 +707,5 @@ if __name__ == '__main__':
 
     fill_all_templates_from_grist()
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
+
 
