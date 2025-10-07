@@ -566,7 +566,7 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
         template_content = file.read()
 
     # Add directory before the output folder in df
-    df.with_columns(directory_output.strip('/') + '/' + pl.col('nom_dossier').str.strip_chars('/'))
+    df = df.with_columns((directory_output.strip('/') + '/' + pl.col('nom_dossier').str.strip_chars('/')).alias('nom_dossier'))
 
     for row in df.iter_rows(named=True):
         for column in df.columns:
@@ -654,12 +654,12 @@ def get_grist_merge_as_df():
     return new_website_df
 
 
-def fill_all_templates_from_grist(template_file='ssphub_directory/template.qmd', directory='ssphub_directory'):
+def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qmd', directory='ssphub_directory'):
     """
     Wrapper of fill_template to automate creation of pages from the grist table
 
     Arg:
-        template_file (string): the path of the template to use
+        path_to_template (string): the path of the template to use
         directory (string): the root directory where to save the files
 
     Returns:
@@ -668,7 +668,7 @@ def fill_all_templates_from_grist(template_file='ssphub_directory/template.qmd',
     Example:
         >>> fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), 'ssphub_directory')
     """
-    fill_template(template_file, get_grist_merge_as_df(), directory)
+    fill_template(path_to_template, get_grist_merge_as_df(), directory_output=directory)
 
 
 if __name__ == '__main__':
