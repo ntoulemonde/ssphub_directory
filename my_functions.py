@@ -17,6 +17,7 @@ import yaml  # To update newsletter qmd metadata for the email
 import os  # to remove temporary files, create directory etc
 from grist_api import GristDocAPI  # To get directory emails
 import polars as pl  # to manage directory emails
+import pandas as pd  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
 import shutil  # to remove directory and its content
@@ -621,18 +622,16 @@ def get_grist_merge_as_df():
     """
     # fetch all the rows
     api_merge = get_grist_merge_website_login()
-    new_website_df = api_merge.fetch_table('Intranet_details')
-    new_website_df = pl.DataFrame(new_website_df)
+    new_website_df = api_merge.fetch_table('Intranet_details')  
+    # Pb with attachment column with polars, so pass by pandas
+    new_website_df = pd.DataFrame(new_website_df)
 
     # Selecting useful columns
     cols_to_keep = ['id', 'Acteurs', 'Resultats', 'Details_du_projet',
        'sous_titre', 'Code_du_projet', 'tags', 'nom_dossier', 'date',
-       'image', 'Titre']
-    new_website_df = (new_website_df.select(cols_to_keep)
-                                    .with_columns(pl.col('Titre').alias("Titre_Tab"))
-    )
-
-    # new_website_df['Titre_Tab'] = new_website_df['Titre']
+       'image', 'Titre', 'image']
+    new_website_df = new_website_df[cols_to_keep]
+    new_website_df['Titre_Tab'] = new_website_df['Titre']
 
     # Dictionnary for renaming variables / Right part must correspond to template keywords
     variable_mapping = {
@@ -649,9 +648,20 @@ def get_grist_merge_as_df():
         'Titre_Tab': 'my_table_title'
     }
 
-    new_website_df = new_website_df.rename(variable_mapping)
+    new_website_df = new_website_df.rename(columns=variable_mapping)
 
     return new_website_df
+
+url = f'https://grist.numerique.gouv.fr/api/docs/{os.environ['SSPHUB_WEBSITE_MERGE_ID']}/attachments/archive'
+headers = {
+    'Authorization': f'Bearer {os.environ['GRIST_API_KEY']}'
+}
+
+try:
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+except requests.exceptions.RequestException as e:
+    print(f"Error fetching the .qmd file: {e}")
 
 
 def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qmd', directory='ssphub_directory'):
