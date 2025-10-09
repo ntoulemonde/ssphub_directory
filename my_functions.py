@@ -662,7 +662,7 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
     
         with open(path_to_template, 'r') as file:
             template_content = file.read()
-
+        
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
@@ -786,6 +786,9 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
 
     # Cleaning breaks
     pages_df = clean_br_values_df(pages_df)
+
+    # Droping rows with empty nom_dossier
+    pages_df = pages_df.query('nom_dossier != "" ')
 
     # Create the index.qmd by calling the function
     fill_template(path_to_template, pages_df, directory_output=directory)
