@@ -4,6 +4,7 @@ def test_generate_email():
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
 
 def test_extract_emails():
+
     assert "nicolas.toulemonde@insee.fr" in extract_emails_from_txt()
     
 # def test_export_list_to_csv():
@@ -41,8 +42,6 @@ def test_update_polars():
 def test_update_polars2():
     get_emails()
 
-def test_update_polars3():
-    get_grist_merge_as_df()
 
 def test_grist_attachment_download():
     url = get_grist_attachments_config()[0]
@@ -52,18 +51,9 @@ def test_grist_attachment_download():
     unzip_dir('.temp/Fusion_site_SSPHub-Attachments.zip', '.temp/extracted_data')
     rename_grist_attachments('.temp/extracted_data')
 
-def test_global():
-    path = '.temp/'
-    if os.path.exists(path):
-        shutil.rmtree(path)
 
-    path = 'ssphub_directory/test/'
-    if os.path.exists(path):
-        shutil.rmtree(path)
-    
-    path = 'test/'
-    if os.path.exists(path):
-        shutil.rmtree(path)
+def test_global():
+    remove_files_dir('.temp/', 'ssphub_directory/test/', 'test/')
     
     fill_all_templates_from_grist()
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
