@@ -1,7 +1,11 @@
-from ssphub_directory.my_functions import *
+import ssphub_directory.my_functions  as my_f
+import importlib
+importlib.reload(my_f) # When functions are updated
 
-remove_files_dir('ssphub/project/test')
+my_f.remove_files_dir('ssphub/project/test')
 
-fill_all_templates_from_grist('ssphub_directory/template.qmd', directory='ssphub/')
+my_f.fill_all_templates_from_grist()
 
-fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), directory_output='ssphub')
+my_f.fill_all_templates_from_grist('ssphub_directory/template.qmd', directory='ssphub/')
+
+my_f.fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), directory_output='ssphub')

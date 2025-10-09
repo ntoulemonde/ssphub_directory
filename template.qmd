@@ -1,23 +1,23 @@
 ---
-title: "{{my_title}}"
+title: "{{my_yaml_title}}"
 
 # Summary for listings and search engines
 description: |
-  "{{my_description}}"
+  "{{my_yaml_description}}"
 
 format: html
 
 authors: 
-{{my_authors}}
+{{my_yaml_authors}}
 
 # Date published
-date: {{my_date}}
+date: {{my_yaml_date}}
 
 # Date updated
-image: {{my_image_path}}
+image: {{my_yaml_image_path}}
 
 categories : 
-{{my_categories}}
+{{my_yaml_categories}}
 
 ---
 

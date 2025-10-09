@@ -615,6 +615,34 @@ def export_list_to_csv(data_list, file_path):
 
 #     return res
 
+def clean_br_values_df(df):
+    """
+    Replace the /n by HTML <br> mark up or nothing for columns who will end up in a Md table/YAML part
+
+    Args:
+        df (pd.Dataframe): the grist table to merge
+    
+    Returns;
+        df (pd.DataFrame): cleaned df
+    """
+
+    # For columns containing 'my table', we replace the break with <br>. 
+    columns_to_replace = [col for col in df.columns if 'my_table' in col]
+
+    # Replace '\n' with '<br>' in the identified columns
+    for col in columns_to_replace:
+        df[col] = df[col].astype(str).str.replace('\n', ' <br> ')
+
+    # For columns containing 'my yaml', we replace the break with ''
+    # columns_to_replace = [col for col in df.columns if 'my_yaml' in col]
+    columns_to_replace = ['my_yaml_title', 'my_yaml_description']
+
+    # Replace '\n' with '<br>' in the identified columns
+    for col in columns_to_replace:
+        df[col] = df[col].astype(str).str.replace('\n', ' ')
+    
+    return df
+
 
 def fill_template(path_to_template, df, directory_output='ssphub_directory'):
     """
@@ -698,12 +726,12 @@ def get_grist_merge_as_df():
 
     # Dictionnary for renaming variables / Right part must correspond to template keywords
     variable_mapping = {
-        'Titre': 'my_title',
-        'sous_titre': 'my_description',
-        'auteurs': 'my_authors',
-        'date': 'my_date',
-        'image': 'my_image_path',
-        'tags': 'my_categories',
+        'Titre': 'my_yaml_title',
+        'sous_titre': 'my_yaml_description',
+        'auteurs': 'my_yaml_authors',
+        'date': 'my_yaml_date',
+        'image': 'my_yaml_image_path',
+        'tags': 'my_yaml_categories',
         'Details_du_projet': 'my_table_details',
         'Acteurs': 'my_table_actors',
         'Resultats': 'my_table_results',
@@ -756,6 +784,9 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
     # Storing info from GRIST
     pages_df = get_grist_merge_as_df()
 
+    # Cleaning breaks
+    pages_df = clean_br_values_df(pages_df)
+
     # Create the index.qmd by calling the function
     fill_template(path_to_template, pages_df, directory_output=directory)
     
@@ -781,11 +812,11 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
     attachments_dict['short_image_name'] = [image[41:] for image in attachments_list]
     attachments_dict['local_image_path'] = [unzip_dir_path + '/' + image for image in attachments_list]
     ## Selecting the two useful columns
-    pages_df = pages_df[['nom_dossier', 'my_image_path']]
+    pages_df = pages_df[['nom_dossier', 'my_yaml_image_path']]
     ## Merging the two
-    pages_df = pages_df.merge(pd.DataFrame.from_dict(attachments_dict), how='left', left_on='my_image_path', right_on='short_image_name')
+    pages_df = pages_df.merge(pd.DataFrame.from_dict(attachments_dict), how='left', left_on='my_yaml_image_path', right_on='short_image_name')
     ## Creating destination file
-    pages_df['dest_image_path'] = pages_df['nom_dossier'] + '/' + pages_df['my_image_path']
+    pages_df['dest_image_path'] = pages_df['nom_dossier'] + '/' + pages_df['my_yaml_image_path']
     pages_df.dropna(subset='local_image_path', inplace=True)  # Droping files where didn't download image 
     ## Moving all images to their folder
     for index, row in pages_df.iterrows():
