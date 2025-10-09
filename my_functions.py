@@ -720,9 +720,9 @@ def get_grist_merge_as_df():
     # Selecting useful columns
     cols_to_keep = ['id', 'Acteurs', 'Resultats', 'Details_du_projet',
        'sous_titre', 'Code_du_projet', 'tags', 'nom_dossier', 'date',
-       'image', 'Titre', 'auteurs']
+       'image', 'Titre', 'auteurs', 'to_update']
+
     new_website_df = new_website_df[cols_to_keep]
-    new_website_df['Titre_Tab'] = new_website_df['Titre']
 
     # Dictionnary for renaming variables / Right part must correspond to template keywords
     variable_mapping = {
@@ -735,11 +735,12 @@ def get_grist_merge_as_df():
         'Details_du_projet': 'my_table_details',
         'Acteurs': 'my_table_actors',
         'Resultats': 'my_table_results',
-        'Code_du_projet': 'my_table_repo_path',
-        'Titre_Tab': 'my_table_title'
+        'Code_du_projet': 'my_table_repo_path'
     }
 
     new_website_df = new_website_df.rename(columns=variable_mapping)
+
+    new_website_df['my_table_title'] = new_website_df['my_yaml_title']
 
     return new_website_df
 
@@ -787,8 +788,8 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
     # Cleaning breaks
     pages_df = clean_br_values_df(pages_df)
 
-    # Droping rows with empty nom_dossier
-    pages_df = pages_df.query('nom_dossier != "" ')
+    # Droping rows with empty nom_dossier and keeping only the one to_update
+    pages_df = pages_df.query('nom_dossier != "" and to_update == True ')
 
     # Create the index.qmd by calling the function
     fill_template(path_to_template, pages_df, directory_output=directory)
