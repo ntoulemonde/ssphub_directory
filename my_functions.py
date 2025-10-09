@@ -690,7 +690,7 @@ def get_grist_merge_as_df():
     # Selecting useful columns
     cols_to_keep = ['id', 'Acteurs', 'Resultats', 'Details_du_projet',
        'sous_titre', 'Code_du_projet', 'tags', 'nom_dossier', 'date',
-       'image', 'Titre']
+       'image', 'Titre', 'auteurs']
     new_website_df = new_website_df[cols_to_keep]
     new_website_df['Titre_Tab'] = new_website_df['Titre']
 
@@ -698,7 +698,7 @@ def get_grist_merge_as_df():
     variable_mapping = {
         'Titre': 'my_title',
         'sous_titre': 'my_description',
-        # 'auteurs': 'my_authors',
+        'auteurs': 'my_authors',
         'date': 'my_date',
         'image': 'my_image_path',
         'tags': 'my_categories',
@@ -821,4 +821,6 @@ if __name__ == '__main__':
 
     fill_all_templates_from_grist()
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
+
+    remove_files_dir('.temp/', 'ssphub_directory/test/')
 
