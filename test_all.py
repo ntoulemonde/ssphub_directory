@@ -44,6 +44,14 @@ def test_update_polars2():
 def test_update_polars3():
     get_grist_merge_as_df()
 
+def test_grist_attachment_download():
+    url = get_grist_attachments_config()[0]
+    headers = get_grist_attachments_config()[1]
+
+    download_file(url, output_dir='.temp/', headers=headers)
+    unzip_dir('.temp/Fusion_site_SSPHub-Attachments.zip', '.temp/extracted_data')
+    rename_grist_attachments('.temp/extracted_data')
+
 def test_global():
     path = '.temp/'
     if os.path.exists(path):

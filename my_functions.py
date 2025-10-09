@@ -21,7 +21,7 @@ import pandas as pd  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
 import shutil  # to remove directory and its content
-
+import zipfile  # GRIST attachments
 
 def generate_eml_file(email_body, subject, bcc_recipient, to_recipient=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
     """
@@ -302,7 +302,7 @@ def list_image_files_for_newsletter(number, branch='main'):
     return list_raw_image_files(repo_owner, repo_name, subfolder_path, branch)
 
 
-def download_file(file_url, output_dir='.temp'):
+def download_file(file_url, output_dir='.temp', headers=None):
     """
     Downloads a file from given url and store it in output_dir
 
@@ -316,29 +316,87 @@ def download_file(file_url, output_dir='.temp'):
 
     Example:
         >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
-        Image file downloaded to .temp/2025_09_back_school.png
+        File downloaded to .temp/2025_09_back_school.png
         """
 
     try:
         # Send a GET request to the GitHub API
-        response = requests.get(file_url)
+        response = requests.get(file_url, headers=headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
 
         # Create the output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Extract the file name from the file path
-        file_name = os.path.basename(file_url)
+        # Extract the file name from the response or, if not, from file_url
+        if 'Content-Disposition' in response.headers:
+            file_name = response.headers['Content-Disposition'].split('filename=')[-1].strip('"').replace(' ', '_')
+        else:
+            file_name = os.path.basename(file_url)
 
         # Save the file to the output directory
         output_path = os.path.join(output_dir, file_name)
         with open(output_path, 'wb') as f:
             f.write(response.content)
 
-        print(f"Image file downloaded to {output_path}")
+        print(f"File downloaded to {output_path}")
 
     except requests.exceptions.RequestException as e:
-        print(f"Error downloading image file: {e}")
+        print(f"Error downloading file: {e}")
+
+
+def unzip_dir(zip_file_path, extraction_dir):
+    """
+    Unzip a folder
+
+    Args:
+        zip_file_path (string): path to file to unzip.
+        extraction_dir (string): path to directory to unzip files
+
+    Result: 
+        None. A message is printed. 
+    
+    Example:
+        >>> unzip_dir('.temp/Fusion_site_SSPHub-Attachments.zip', '.temp/extracted_data')
+        Files extracted to .temp/extracted_data
+    """
+    # Define the path to the zip file and the extraction directory
+    # zip_file_path = '.temp/Fusion_site_SSPHub-Attachments.zip'
+    # extraction_dir = '.temp/extracted_data'
+
+    # Create the extraction directory if it doesn't exist
+    if not os.path.exists(extraction_dir):
+        os.makedirs(extraction_dir)
+
+    # Open the zip file
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        # Extract all the contents into the specified directory
+        zip_ref.extractall(extraction_dir)
+
+    print(f"Files extracted to {extraction_dir}")
+
+
+def rename_grist_attachments(dir_path):
+    """
+    Remove the first 42 characters of filenames in a folder. 
+    Attachment from GRIST are named :
+    'e5e7c83c9a7c795d5a2c2f45923b567b7be21232_visuel_Budget_des_familles(1).png'
+
+    Args:
+        dir_path (string): path to directory.
+
+    Result:
+        A list of the renamed files
+
+    Example:
+        >>> rename_grist_attachments('.temp/extracted_data')
+    ['2025_09_back_school_old.jpg', 'visuel_Budget_des_familles(1).png', '2025_09_back_school.png',
+    'visuel_Budget_des_familles.png']
+    """
+    # Removing the first part of the filename, a hash of 40 characters
+    for file_name in os.listdir(dir_path):
+        os.rename(dir_path + '/' + file_name, dir_path + '/' + file_name[41:])
+
+    return os.listdir(dir_path)
 
 
 def download_images_for_newsletter(number, branch='main', output_dir='.temp'):
@@ -558,7 +616,7 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
     Update the variables in a template QMD file with the ones from a data table.
 
     Args:
-        df (Polars object): data frame where to have the values. A column must be named 'nom_dossier'
+        df (pandas object): data frame where to have the values. A column must be named 'nom_dossier'
         qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
         directory_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
         !!! Don't put / at the end . For example : test is OK but test/ NOT OK
@@ -567,9 +625,9 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
         template_content = file.read()
 
     # Add directory before the output folder in df
-    df = df.with_columns((directory_output.strip('/') + '/' + pl.col('nom_dossier').str.strip_chars('/')).alias('nom_dossier'))
+    df['nom_dossier'] = directory_output.strip('/') + '/' + df['nom_dossier'].str.strip('/')
 
-    for row in df.iter_rows(named=True):
+    for index, row in df.iterrows():
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
@@ -652,17 +710,6 @@ def get_grist_merge_as_df():
 
     return new_website_df
 
-url = f'https://grist.numerique.gouv.fr/api/docs/{os.environ['SSPHUB_WEBSITE_MERGE_ID']}/attachments/archive'
-headers = {
-    'Authorization': f'Bearer {os.environ['GRIST_API_KEY']}'
-}
-
-try:
-    response = requests.get(url, headers=headers)
-    response.raise_for_status()
-except requests.exceptions.RequestException as e:
-    print(f"Error fetching the .qmd file: {e}")
-
 
 def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qmd', directory='ssphub_directory'):
     """
@@ -678,8 +725,18 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
     Example:
         >>> fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), 'ssphub_directory')
     """
-    fill_template(path_to_template, get_grist_merge_as_df(), directory_output=directory)
+    
+    df = get_grist_merge_as_df()
 
+    fill_template(path_to_template, df, directory_output=directory)
+
+def get_grist_attachments_config():
+    url = f'https://grist.numerique.gouv.fr/api/docs/{os.environ['SSPHUB_WEBSITE_MERGE_ID']}/attachments/archive'
+    headers = {
+        'Authorization': f'Bearer {os.environ['GRIST_API_KEY']}'
+    }
+
+    return url, headers
 
 if __name__ == '__main__':
     path = '.temp/'
