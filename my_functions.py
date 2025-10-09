@@ -624,27 +624,29 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
         df (pandas object): data frame where to have the values. A column must be named 'nom_dossier'
         qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
         directory_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
-        !!! Don't put / at the end . For example : test is OK but test/ NOT OK
+  
     """
-    with open(path_to_template, 'r') as file:
-        template_content = file.read()
 
     # Add directory before the output folder in df
     df['nom_dossier'] = directory_output.strip('/') + '/' + df['nom_dossier'].str.strip('/')
 
     for index, row in df.iterrows():
+    
+        with open(path_to_template, 'r') as file:
+            template_content = file.read()
+
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
             template_content = template_content.replace('{{' + variable_name + '}}', str(variable_value))
 
         # Create the output directory if it doesn't exist
-        os.makedirs(row['nom_dossier'], exist_ok=True)
+        os.makedirs(df.at[index, 'nom_dossier'], exist_ok=True)
 
-        output_file_path = row['nom_dossier'] + '/index.qmd'
-        # Remove the file
+        output_file_path = df.at[index, 'nom_dossier'] + '/index.qmd'
+        
+        # Remove the file and write it
         remove_files_dir(output_file_path)
-
         with open(output_file_path, 'w') as res_file:
             res_file.write(template_content)
         
@@ -673,7 +675,7 @@ def get_grist_merge_as_df():
         None
 
     Returns:
-        A pl dataframe with columns matching the template variable names
+        A pd dataframe with columns matching the template variable names
 
     Example:
         >>> get_grist_merge_as_df()
@@ -756,7 +758,7 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
 
     # Create the index.qmd by calling the function
     fill_template(path_to_template, pages_df, directory_output=directory)
-
+    
     # Download all attachments in GRIST
     ## URL set up
     url = get_grist_attachments_config()[0]

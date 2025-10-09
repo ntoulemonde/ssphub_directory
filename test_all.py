@@ -30,6 +30,9 @@ def test_fill_template():
 
     fill_template('ssphub_directory/template.qmd', df, 'ssphub_directory/')
 
+    
+    fill_template('ssphub_directory/template.qmd', new_website_df.head(2), 'ssphub_directory/')
+
 def test_website_merge():
     # df = get_website_merge_as_df().head(1)
     df = get_grist_merge_as_df()
