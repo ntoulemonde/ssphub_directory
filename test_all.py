@@ -10,7 +10,7 @@ def test_extract_emails():
 # def test_export_list_to_csv():
 #     export_list_to_csv(extract_emails_from_txt(), 'output/temp.csv')
 
-def test_fill_template():
+def test_fill_template_one_row():
     # Create a test DataFrame with the variables to replace
     df = pd.DataFrame({
         'my_title': ['Title test'],
@@ -30,8 +30,11 @@ def test_fill_template():
 
     fill_template('ssphub_directory/template.qmd', df, 'ssphub_directory/')
 
-    
+
+def test_fill_template_two_rows():
+    new_website_df = get_grist_merge_as_df()  
     fill_template('ssphub_directory/template.qmd', new_website_df.head(2), 'ssphub_directory/')
+
 
 def test_website_merge():
     # df = get_website_merge_as_df().head(1)
@@ -52,7 +55,6 @@ def test_grist_attachment_download():
 
     download_file(url, output_dir='.temp/', headers=headers)
     unzip_dir('.temp/Fusion_site_SSPHub-Attachments.zip', '.temp/extracted_data')
-    rename_grist_attachments('.temp/extracted_data')
 
 
 def test_global():
