@@ -381,30 +381,6 @@ def unzip_dir(zip_file_path, extraction_dir):
     print(f"Files extracted to {extraction_dir}")
 
 
-def rename_grist_attachments(dir_path):
-    """
-    Remove the first 42 characters of filenames in a folder. 
-    Attachment from GRIST are named :
-    'e5e7c83c9a7c795d5a2c2f45923b567b7be21232_visuel_Budget_des_familles(1).png'
-
-    Args:
-        dir_path (string): path to directory.
-
-    Result:
-        A list of the renamed files
-
-    Example:
-        >>> rename_grist_attachments('.temp/extracted_data')
-    ['2025_09_back_school_old.jpg', 'visuel_Budget_des_familles(1).png', '2025_09_back_school.png',
-    'visuel_Budget_des_familles.png']
-    """
-    # Removing the first part of the filename, a hash of 40 characters
-    for file_name in os.listdir(dir_path):
-        os.rename(dir_path + '/' + file_name, dir_path + '/' + file_name[41:])
-
-    return os.listdir(dir_path)
-
-
 def download_images_for_newsletter(number, branch='main', output_dir='.temp'):
     """
     Download all image files from given newsletter number and branch and store it in output_dir
