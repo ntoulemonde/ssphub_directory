@@ -2,8 +2,7 @@
 title: "{{my_yaml_title}}"
 
 # Summary for listings and search engines
-description: |
-  "{{my_yaml_description}}"
+description: "{{my_yaml_description}}"
 
 format: html
 
