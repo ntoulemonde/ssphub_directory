@@ -421,7 +421,7 @@ def get_grist_directory_login():
     """
     # Log in to GRIST API
     SERVER = "https://grist.numerique.gouv.fr/"
-    DOC_ID = os.environ['SSPHUB_DIRECTORY_ID']
+    DOC_ID = os.environ['GRIST_SSPHUB_DIRECTORY_ID']
 
     if 'GRIST_API_KEY' not in os.environ:
         raise ValueError("The GRIST_API_KEY environment variable does not exist.")
@@ -593,7 +593,7 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
 def get_grist_merge_website_login():
     # Log in to GRIST API
     SERVER = "https://grist.numerique.gouv.fr/"
-    DOC_ID = os.environ['SSPHUB_WEBSITE_MERGE_ID']
+    DOC_ID = os.environ['GRIST_SSPHUB_WEBSITE_MERGE_ID']
 
     if 'GRIST_API_KEY' not in os.environ:
         raise ValueError("The GRIST_API_KEY environment variable does not exist.")
