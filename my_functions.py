@@ -17,10 +17,11 @@ import yaml  # To update newsletter qmd metadata for the email
 import os  # to remove temporary files, create directory etc
 from grist_api import GristDocAPI  # To get directory emails
 import polars as pl  # to manage directory emails
+import pandas as pd  # to manage directory emails
 import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
 import shutil  # to remove directory and its content
-
+import zipfile  # GRIST attachments
 
 def generate_eml_file(email_body, subject, bcc_recipient, to_recipient=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
     """
@@ -301,7 +302,7 @@ def list_image_files_for_newsletter(number, branch='main'):
     return list_raw_image_files(repo_owner, repo_name, subfolder_path, branch)
 
 
-def download_file(file_url, output_dir='.temp'):
+def download_file(file_url, output_dir='.temp', headers=None):
     """
     Downloads a file from given url and store it in output_dir
 
@@ -310,34 +311,74 @@ def download_file(file_url, output_dir='.temp'):
         output_dir: directory where to save the file to, as a string
 
     Returns:
-        nothing
+        file_name (str): name of the downloaded file
         print if download was successfull
 
     Example:
         >>> download_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/2025_09_back_school.png')
-        Image file downloaded to .temp/2025_09_back_school.png
+        File downloaded to .temp/2025_09_back_school.png
+        '2025_09_back_school.png'
         """
 
     try:
         # Send a GET request to the GitHub API
-        response = requests.get(file_url)
+        response = requests.get(file_url, headers=headers)
         response.raise_for_status()  # Raise an exception for HTTP errors
 
         # Create the output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
 
-        # Extract the file name from the file path
-        file_name = os.path.basename(file_url)
+        # Extract the file name from the response or, if not, from file_url
+        if 'Content-Disposition' in response.headers:
+            file_name = response.headers['Content-Disposition'].split('filename=')[-1].strip('"').replace(' ', '_')
+        else:
+            file_name = os.path.basename(file_url)
 
         # Save the file to the output directory
         output_path = os.path.join(output_dir, file_name)
         with open(output_path, 'wb') as f:
             f.write(response.content)
 
-        print(f"Image file downloaded to {output_path}")
+        print(f"File downloaded to {output_path}")
 
     except requests.exceptions.RequestException as e:
-        print(f"Error downloading image file: {e}")
+        print(f"Error downloading file: {e}")
+    
+    return file_name
+
+
+def unzip_dir(zip_file_path, extraction_dir):
+    """
+    Unzip a folder
+
+    Args:
+        zip_file_path (string): path to file to unzip.
+        extraction_dir (string): path to directory to unzip files
+
+    Result: 
+        None. A message is printed. 
+    
+    Example:
+        >>> unzip_dir('.temp/Fusion_site_SSPHub-Attachments.zip', '.temp/extracted_data')
+        Files extracted to .temp/extracted_data
+    """
+    # Define the path to the zip file and the extraction directory
+    # zip_file_path = '.temp/Fusion_site_SSPHub-Attachments.zip'
+    # extraction_dir = '.temp/extracted_data'
+
+    # Remove folder
+    remove_files_dir(extraction_dir)
+
+    # Create the extraction directory if it doesn't exist
+    if not os.path.exists(extraction_dir):
+        os.makedirs(extraction_dir)
+
+    # Open the zip file
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        # Extract all the contents into the specified directory
+        zip_ref.extractall(extraction_dir)
+
+    print(f"Files extracted to {extraction_dir}")
 
 
 def download_images_for_newsletter(number, branch='main', output_dir='.temp'):
@@ -405,8 +446,7 @@ def generate_email(number, branch, email_object, email_dest, drop_temp=True):
         generate_eml_file(f.read(), email_object, email_dest)
 
     if drop_temp:
-        os.remove(temp_file_qmd)
-        os.remove(temp_file_html)
+        remove_files_dir(temp_file_qmd, temp_file_html)
 
 
 def get_grist_directory_login():
@@ -551,37 +591,66 @@ def export_list_to_csv(data_list, file_path):
 
 #     return res
 
+def clean_br_values_df(df):
+    """
+    Replace the /n by HTML <br> mark up or nothing for columns who will end up in a Md table/YAML part
+
+    Args:
+        df (pd.Dataframe): the grist table to merge
+    
+    Returns;
+        df (pd.DataFrame): cleaned df
+    """
+
+    # For columns containing 'my table', we replace the break with <br>. 
+    columns_to_replace = [col for col in df.columns if 'my_table' in col]
+
+    # Replace '\n' with '<br>' in the identified columns
+    for col in columns_to_replace:
+        df[col] = df[col].astype(str).str.replace('\n', ' <br> ')
+
+    # For columns containing 'my yaml', we replace the break with ''
+    # columns_to_replace = [col for col in df.columns if 'my_yaml' in col]
+    columns_to_replace = ['my_yaml_title', 'my_yaml_description']
+
+    # Replace '\n' with '<br>' in the identified columns
+    for col in columns_to_replace:
+        df[col] = df[col].astype(str).str.replace('\n', ' ')
+    
+    return df
+
 
 def fill_template(path_to_template, df, directory_output='ssphub_directory'):
     """
     Update the variables in a template QMD file with the ones from a data table.
 
     Args:
-        df (Polars object): data frame where to have the values. A column must be named 'nom_dossier'
+        df (pandas object): data frame where to have the values. A column must be named 'nom_dossier'
         qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
         directory_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
-        !!! Don't put / at the end . For example : test is OK but test/ NOT OK
+  
     """
-    with open(path_to_template, 'r') as file:
-        template_content = file.read()
 
     # Add directory before the output folder in df
-    df.with_columns(directory_output.strip('/') + '/' + pl.col('nom_dossier').str.strip_chars('/'))
+    df['nom_dossier'] = directory_output.strip('/') + '/' + df['nom_dossier'].str.strip('/')
 
-    for row in df.iter_rows(named=True):
+    for index, row in df.iterrows():
+    
+        with open(path_to_template, 'r') as file:
+            template_content = file.read()
+        
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
             template_content = template_content.replace('{{' + variable_name + '}}', str(variable_value))
 
         # Create the output directory if it doesn't exist
-        os.makedirs(row['nom_dossier'], exist_ok=True)
+        os.makedirs(df.at[index, 'nom_dossier'], exist_ok=True)
 
-        output_file_path = row['nom_dossier'] + '/index.qmd'
-        # If the file exists, we remove it
-        if os.path.exists(output_file_path) and os.path.isfile(output_file_path):
-            os.remove(output_file_path)
-
+        output_file_path = df.at[index, 'nom_dossier'] + '/index.qmd'
+        
+        # Remove the file and write it
+        remove_files_dir(output_file_path)
         with open(output_file_path, 'w') as res_file:
             res_file.write(template_content)
         
@@ -610,10 +679,9 @@ def get_grist_merge_as_df():
         None
 
     Returns:
-        A pl dataframe with columns matching the template variable names
+        A pd dataframe with columns matching the template variable names
 
     Example:
-        >>> get_grist_merge_as_df()
         >>> get_grist_merge_as_df()
     id  ...                                     my_table_title
     0    2  ...  Travaux méthodologiques sur l'enquête Budget d...
@@ -621,65 +689,151 @@ def get_grist_merge_as_df():
     """
     # fetch all the rows
     api_merge = get_grist_merge_website_login()
-    new_website_df = api_merge.fetch_table('Intranet_details')
-    new_website_df = pl.DataFrame(new_website_df)
+    new_website_df = api_merge.fetch_table('Intranet_details')  
+    # Pb with attachment column with polars, so pass by pandas
+    new_website_df = pd.DataFrame(new_website_df)
 
     # Selecting useful columns
     cols_to_keep = ['id', 'Acteurs', 'Resultats', 'Details_du_projet',
        'sous_titre', 'Code_du_projet', 'tags', 'nom_dossier', 'date',
-       'image', 'Titre']
-    new_website_df = (new_website_df.select(cols_to_keep)
-                                    .with_columns(pl.col('Titre').alias("Titre_Tab"))
-    )
+       'image', 'Titre', 'auteurs', 'to_update']
 
-    # new_website_df['Titre_Tab'] = new_website_df['Titre']
+    new_website_df = new_website_df[cols_to_keep]
 
     # Dictionnary for renaming variables / Right part must correspond to template keywords
     variable_mapping = {
-        'Titre': 'my_title',
-        'sous_titre': 'my_description',
-        # 'auteurs': 'my_authors',
-        'date': 'my_date',
-        'image': 'my_image_path',
-        'tags': 'my_categories',
+        'Titre': 'my_yaml_title',
+        'sous_titre': 'my_yaml_description',
+        'auteurs': 'my_yaml_authors',
+        'date': 'my_yaml_date',
+        'image': 'my_yaml_image_path',
+        'tags': 'my_yaml_categories',
         'Details_du_projet': 'my_table_details',
         'Acteurs': 'my_table_actors',
         'Resultats': 'my_table_results',
-        'Code_du_projet': 'my_table_repo_path',
-        'Titre_Tab': 'my_table_title'
+        'Code_du_projet': 'my_table_repo_path'
     }
 
-    new_website_df = new_website_df.rename(variable_mapping)
+    new_website_df = new_website_df.rename(columns=variable_mapping)
+
+    new_website_df['my_table_title'] = new_website_df['my_yaml_title']
 
     return new_website_df
 
 
-def fill_all_templates_from_grist(template_file='ssphub_directory/template.qmd', directory='ssphub_directory'):
+def get_grist_attachments_config():
     """
-    Wrapper of fill_template to automate creation of pages from the grist table
+    Create API url to fetch attachments 
 
     Arg:
-        template_file (string): the path of the template to use
+        None.
+        Environment variables must contain 'SSPHUB_WEBSITE_MERGE_ID' and 'GRIST_API_KEY'
+
+    Returns:
+        tuple with url and headers of the API call
+
+    Example:
+        >>> get_grist_attachments_config()
+        ('https://grist.numerique.gouv.fr/api/docs/SSPHUB_WEBSITE_MERGE_ID/attachments/archive', {'Authorization': 'Bearer GRIST_API_KEY'})
+    """
+    url = f'https://grist.numerique.gouv.fr/api/docs/{os.environ['SSPHUB_WEBSITE_MERGE_ID']}/attachments/archive'
+    headers = {
+        'Authorization': f'Bearer {os.environ['GRIST_API_KEY']}'
+    }
+
+    return url, headers
+
+
+def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qmd', directory='ssphub_directory'):
+    """
+    Fetch information from GRIST to create index.qmd and download the image data, move it to the right folder
+
+    Arg:
+        path_to_template (string): the path of the template to use
         directory (string): the root directory where to save the files
 
     Returns:
         None
 
     Example:
-        >>> fill_template('ssphub_directory/template.qmd', get_grist_merge_as_df(), 'ssphub_directory')
+        >>> fill_all_templates_from_grist()
     """
-    fill_template(template_file, get_grist_merge_as_df(), directory)
+    # Storing info from GRIST
+    pages_df = get_grist_merge_as_df()
+
+    # Cleaning breaks
+    pages_df = clean_br_values_df(pages_df)
+
+    # Droping rows with empty nom_dossier and keeping only the one to_update
+    pages_df = pages_df.query('nom_dossier != "" and to_update == True ')
+
+    # Create the index.qmd by calling the function
+    fill_template(path_to_template, pages_df, directory_output=directory)
+    
+    # Download all attachments in GRIST
+    ## URL set up
+    url = get_grist_attachments_config()[0]
+    headers = get_grist_attachments_config()[1]
+    ## Destination directory
+    temp_dir = '.temp/'
+    ## Download attachment and store zip file name
+    grist_attach_filename = download_file(url, output_dir=temp_dir, headers=headers)
+
+    # Unzip attachment file archive
+    unzip_dir_path = temp_dir + 'extracted_data'
+    unzip_dir(temp_dir + grist_attach_filename, unzip_dir_path)
+
+    # List all images downloaded 
+    attachments_list = os.listdir(unzip_dir_path)
+    
+    # Merging with GRIST data to have destination folder defined in GRIST
+    ## Creating an intermediate dict 
+    attachments_dict = {}
+    attachments_dict['short_image_name'] = [image[41:] for image in attachments_list]
+    attachments_dict['local_image_path'] = [unzip_dir_path + '/' + image for image in attachments_list]
+    ## Selecting the two useful columns
+    pages_df = pages_df[['nom_dossier', 'my_yaml_image_path']]
+    ## Merging the two
+    pages_df = pages_df.merge(pd.DataFrame.from_dict(attachments_dict), how='left', left_on='my_yaml_image_path', right_on='short_image_name')
+    ## Creating destination file
+    pages_df['dest_image_path'] = pages_df['nom_dossier'] + '/' + pages_df['my_yaml_image_path']
+    pages_df.dropna(subset='local_image_path', inplace=True)  # Droping files where didn't download image 
+    ## Moving all images to their folder
+    for index, row in pages_df.iterrows():
+        os.rename(row['local_image_path'], row['dest_image_path'])
+        print(f'File {row['local_image_path']} == moved to ==> {row['dest_image_path']}')
+
+    # Cleaning intermediate data
+    remove_files_dir(unzip_dir_path, temp_dir+grist_attach_filename)
+
+
+def remove_files_dir(*file_paths):
+    """
+    Remove files or folder. 
+
+    Args: 
+        file_paths (string) : List of files or folder to delete
+
+    Return:
+        None
+
+    Example:
+        >>> remove_files_dir('.temp/')
+        ('.temp/',) have been removed
+    """
+    for file_path in file_paths:
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            os.remove(file_path)
+        elif os.path.exists(file_path) and os.path.isdir(file_path):
+            shutil.rmtree(file_path)
+    print(f'{file_paths} have been removed')
 
 
 if __name__ == '__main__':
-    path = '.temp/'
-    if os.path.exists(path):
-        shutil.rmtree(path)
-
-    path = 'ssphub_directory/test/'
-    if os.path.exists(path):
-        shutil.rmtree(path)
+    remove_files_dir('.temp/', 'ssphub_directory/test/')
 
     fill_all_templates_from_grist()
     generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
+
+    remove_files_dir('.temp/', 'ssphub_directory/test/')
 
