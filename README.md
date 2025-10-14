@@ -16,4 +16,4 @@ Tools to manage [SSPHub's](https://ssphub.netlify.app/) directory and [SSPHub's]
 
  - To generate draft email, go to script.py, and run function generate_email
  - To import draft template to SSPHub's site, go to script.py and run fill_all_templates_from_grist
-
+ 
