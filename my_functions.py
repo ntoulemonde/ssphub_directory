@@ -23,15 +23,18 @@ import re  # For pattern matching to search for emails
 import shutil  # to remove directory and its content
 import zipfile  # GRIST attachments
 
-def generate_eml_file(email_body, subject, bcc_recipient, to_recipient=":DG75-SSPHUB-Contact <SSPHUB-contact@insee.fr>"):
+def generate_eml_file(email_body, subject, bcc_recipient, to_recipient='EMAIL_SSPHUB', cc_recipient='', from_sender=None):
     """
     Creates an .eml file and saves it to .temp/email.eml
 
     Args:
         email_body (string): html body of the email
         subject (string): Object of the email
-        bcc_recipient (string): list of recipients of the emails. 
-        to_recipient (string): Email of the sender to indicate (be cautious, it doesn't automate the sending)
+        bcc_recipient (string): list of recipients of the emails to put in bcc
+        to_recipient (string): Email of the sender to indicate (be cautious, it doesn't automate the sending). 
+        The email will be sent to himself
+        cc_recipient (string): list of recipients of the emails to be put in cc
+        from_sender(string or None): email adresses to send from. If None, default Outlook
 
     Returns:
         None
@@ -44,8 +47,10 @@ def generate_eml_file(email_body, subject, bcc_recipient, to_recipient=":DG75-SS
     msg = MIMEMultipart()
     msg['Subject'] = subject
     msg['BCC'] = bcc_recipient
+    msg['CC'] = cc_recipient
     msg['To'] = to_recipient   # Auto send the email
-    msg['From'] = 'SELECT THE RIGHT EMAIL'  # Set the sender's email address
+    if from_sender != None:
+        msg['From'] = from_sender  # Set the sender's email address
     msg['X-Unsent'] = '1'  # Mark the email as unsent : when the file is opened, it can be sent.
 
     # Attach the HTML body
@@ -414,7 +419,14 @@ def download_images_for_newsletter(number, branch='main', output_dir='.temp'):
     return downloaded_files
 
 
-def generate_email(number, branch, email_object, email_dest, drop_temp=True):
+def generate_email(number,
+    branch,
+    email_object,
+    email_to,
+    email_bcc,
+    email_from='SELECT THE RIGHT EMAIL',
+    email_cc='',
+    drop_temp=True):
     """
     Generates the draft email for a newsletter in the folder '.temp/'. Built on previous functions.
 
@@ -422,7 +434,10 @@ def generate_email(number, branch, email_object, email_dest, drop_temp=True):
         number (string): number of the newsletter to turn into email
         branch (string): repo branch of the newsletter to turn into email (main for published newsletter, other for non published newsletters)
         email_object (string): object of the email
-        email_dest (string) : list of email adresses to send the email to.
+        email_to (string) : list of email adresses to send the email to
+        email_bcc (string) : list of email adresses to be in bcc
+        email_from(string) : sender to see in Outlook. None for default sender
+        email_cc (string) : list of email adresses to be in cc
         drop_temp (boolean): if temporary knitted files should be removed after knitting. Default is true
 
     Returns:
@@ -443,7 +458,7 @@ def generate_email(number, branch, email_object, email_dest, drop_temp=True):
     knit_to_html(temp_file_qmd)
 
     with open(temp_file_html, 'r', encoding="utf-8") as f:
-        generate_eml_file(f.read(), email_object, email_dest)
+        generate_eml_file(f.read(), email_object, email_bcc, to_recipient=email_to, cc_recipient=email_cc, from_sender=email_from)
 
     if drop_temp:
         remove_files_dir(temp_file_qmd, temp_file_html)
@@ -736,7 +751,7 @@ def get_grist_attachments_config():
         >>> get_grist_attachments_config()
         ('https://grist.numerique.gouv.fr/api/docs/SSPHUB_WEBSITE_MERGE_ID/attachments/archive', {'Authorization': 'Bearer GRIST_API_KEY'})
     """
-    url = f'https://grist.numerique.gouv.fr/api/docs/{os.environ['SSPHUB_WEBSITE_MERGE_ID']}/attachments/archive'
+    url = f'https://grist.numerique.gouv.fr/api/docs/{os.environ['GRIST_SSPHUB_WEBSITE_MERGE_ID']}/attachments/archive'
     headers = {
         'Authorization': f'Bearer {os.environ['GRIST_API_KEY']}'
     }
@@ -833,7 +848,7 @@ if __name__ == '__main__':
     remove_files_dir('.temp/', 'ssphub_directory/test/')
 
     fill_all_templates_from_grist()
-    generate_email(19, 'main', 'Infolettre de rentrée', get_emails())
+    generate_email(19, 'main', 'Infolettre de rentrée', 'my_to_email@insee.fr', get_emails())
 
     remove_files_dir('.temp/', 'ssphub_directory/test/')
 

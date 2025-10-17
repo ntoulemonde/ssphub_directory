@@ -1,9 +1,21 @@
 import ssphub_directory.my_functions  as my_f
-import importlib
+import importlib  # To reload package
 importlib.reload(my_f)  # When functions are updated
+import os
 
 # To generate email
-# generate_email(20, 'main', 'Infolettre de rentrée', get_emails())
+newsletter_nb = 20
+## Validation
+my_f.generate_email(
+    newsletter_nb,
+    'newsletter_'+str(newsletter_nb),
+    "Pour validation - infolettre d'octobre du SSPHub",
+    os.environ['EMAIL_VALIDATION_TO'],
+    email_bcc='',
+    email_from=None,
+    email_cc=os.environ['EMAIL_VALIDATION_CC']+";"+os.environ['EMAIL_SSPHUB'])
+## Send to all
+my_f.generate_email(newsletter_nb, 'main', 'Infolettre de rentrée', get_emails())
 
 # To generate template
 # my_f.remove_files_dir('ssphub/project/test')
