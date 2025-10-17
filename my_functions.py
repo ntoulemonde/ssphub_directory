@@ -30,7 +30,7 @@ def generate_eml_file(email_body, subject, bcc_recipient, to_recipient='EMAIL_SS
         email_body (string): html body of the email
         subject (string): Object of the email
         bcc_recipient (string): list of recipients of the emails to put in bcc
-        to_recipient (string): Email of the sender to indicate (be cautious, it doesn't automate the sending). 
+        to_recipient (string): Email of the sender to indicate (be cautious, it doesn't automate the sending)
         The email will be sent to himself
         cc_recipient (string): list of recipients of the emails to be put in cc
         from_sender(string or None): email adresses to send from. If None, default Outlook
@@ -48,7 +48,7 @@ def generate_eml_file(email_body, subject, bcc_recipient, to_recipient='EMAIL_SS
     msg['BCC'] = bcc_recipient
     msg['CC'] = cc_recipient
     msg['To'] = to_recipient   # Auto send the email
-    if from_sender != None:
+    if from_sender is not None:
         msg['From'] = from_sender  # Set the sender's email address
     msg['X-Unsent'] = '1'  # Mark the email as unsent : when the file is opened, it can be sent.
 
@@ -79,7 +79,7 @@ def fetch_qmd_file(url):
 
     Example:
         >>> fetch_qmd_file('https://raw.githubusercontent.com/InseeFrLab/ssphub/refs/heads/main/infolettre/infolettre_19/index.qmd')
-    '---\ntitle: "La rentrée 2025: actualités, nouveautés, interview de rentrée"\n\ndescription: |\n  Infolettre du mois de 
+    '---\ntitle: "La rentrée 2025: actualités, nouveautés, interview de rentrée"\n\ndescription: |\n  Infolettre du mois de
     __Septembre 2025__\n\n# Date published\ndate: \'2025-09-29\'\nnumber: 19\n\nauthors:\n ......'
     """
     try:
@@ -135,7 +135,7 @@ def process_qmd_file(qmd_content, qmd_output_file, newsletter_url='https://ssphu
 def clean_yaml_header(yaml_header, newsletter_url):
     """
     Function to transform Yaml header of an index.qmd file and transform it for a qmd file that will be
-    knitted to html. It keeps only title, updates the description with the link to the website, 
+    knitted to html. It keeps only title, updates the description with the link to the website,
     add lang, format and format options, including a css file.
 
     Arg :
@@ -186,7 +186,7 @@ def clean_yaml_header(yaml_header, newsletter_url):
 
 def knit_to_html(processed_qmd_file):
     """
-    knit a qmd file to html 
+    knit a qmd file to html
 
     Args:
         processed_qmd_file (string): file path to the qmd file to knit
@@ -347,7 +347,7 @@ def download_file(file_url, output_dir='.temp', headers=None):
 
     except requests.exceptions.RequestException as e:
         print(f"Error downloading file: {e}")
-    
+
     return file_name
 
 
@@ -359,9 +359,9 @@ def unzip_dir(zip_file_path, extraction_dir):
         zip_file_path (string): path to file to unzip.
         extraction_dir (string): path to directory to unzip files
 
-    Result: 
-        None. A message is printed. 
-    
+    Result:
+        None. A message is printed
+
     Example:
         >>> unzip_dir('.temp/Fusion_site_SSPHub-Attachments.zip', '.temp/extracted_data')
         Files extracted to .temp/extracted_data
@@ -567,7 +567,7 @@ def add_to_grist_delete_table(data_list):
         None
     """
 
-    get_grist_directory_login().add_records('Delete', [{'Emails_to_delete':email} for email in data_list])
+    get_grist_directory_login().add_records('Delete', [{'Emails_to_delete': email} for email in data_list])
 
 
 #     UNUSED FOR NOW - A FIRST BRICK TO BUILD ON A FUNCTION TO AUTOMATICALLY DELETE ROWS BASED ON IDs
@@ -602,12 +602,12 @@ def clean_br_values_df(df):
 
     Args:
         df (pd.Dataframe): the grist table to merge
-    
+
     Returns;
         df (pd.DataFrame): cleaned df
     """
 
-    # For columns containing 'my table', we replace the break with <br>. 
+    # For columns containing 'my table', we replace the break with <br>
     columns_to_replace = [col for col in df.columns if 'my_table' in col]
 
     # Replace '\n' with '<br>' in the identified columns
@@ -621,7 +621,7 @@ def clean_br_values_df(df):
     # Replace '\n' with '<br>' in the identified columns
     for col in columns_to_replace:
         df[col] = df[col].astype(str).str.replace('\n', ' ')
-    
+
     return df
 
 
@@ -633,17 +633,17 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
         df (pandas object): data frame where to have the values. A column must be named 'nom_dossier'
         qmd_file (str): The path to the template QMD file. Format 'my_folder/subfolder/template.qmd'
         directory_output (str): A string to paste before nom_dossier. Default is ssphub_directory/nom_dossier/index.qmd'
-  
+
     """
 
     # Add directory before the output folder in df
     df['nom_dossier'] = directory_output.strip('/') + '/' + df['nom_dossier'].str.strip('/')
 
     for index, row in df.iterrows():
-    
+
         with open(path_to_template, 'r') as file:
             template_content = file.read()
-        
+
         for column in df.columns:
             variable_name = column
             variable_value = row[column]
@@ -653,12 +653,12 @@ def fill_template(path_to_template, df, directory_output='ssphub_directory'):
         os.makedirs(df.at[index, 'nom_dossier'], exist_ok=True)
 
         output_file_path = df.at[index, 'nom_dossier'] + '/index.qmd'
-        
+
         # Remove the file and write it
         remove_files_dir(output_file_path)
         with open(output_file_path, 'w') as res_file:
             res_file.write(template_content)
-        
+
         print(f'File written at {output_file_path}')
 
     return template_content
@@ -694,7 +694,7 @@ def get_grist_merge_as_df():
     """
     # fetch all the rows
     api_merge = get_grist_merge_website_login()
-    new_website_df = api_merge.fetch_table('Intranet_details')  
+    new_website_df = api_merge.fetch_table('Intranet_details')
     # Pb with attachment column with polars, so pass by pandas
     new_website_df = pd.DataFrame(new_website_df)
 
@@ -728,7 +728,7 @@ def get_grist_merge_as_df():
 
 def get_grist_attachments_config():
     """
-    Create API url to fetch attachments 
+    Create API url to fetch attachments
 
     Arg:
         None.
@@ -774,36 +774,36 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
 
     # Create the index.qmd by calling the function
     fill_template(path_to_template, pages_df, directory_output=directory)
-    
+
     # Download all attachments in GRIST
-    ## URL set up
+    # URL set up
     url = get_grist_attachments_config()[0]
     headers = get_grist_attachments_config()[1]
-    ## Destination directory
+    # Destination directory
     temp_dir = '.temp/'
-    ## Download attachment and store zip file name
+    # Download attachment and store zip file name
     grist_attach_filename = download_file(url, output_dir=temp_dir, headers=headers)
 
     # Unzip attachment file archive
     unzip_dir_path = temp_dir + 'extracted_data'
     unzip_dir(temp_dir + grist_attach_filename, unzip_dir_path)
 
-    # List all images downloaded 
+    # List all images downloaded
     attachments_list = os.listdir(unzip_dir_path)
-    
+
     # Merging with GRIST data to have destination folder defined in GRIST
-    ## Creating an intermediate dict 
+    # Creating an intermediate dict
     attachments_dict = {}
     attachments_dict['short_image_name'] = [image[41:] for image in attachments_list]
     attachments_dict['local_image_path'] = [unzip_dir_path + '/' + image for image in attachments_list]
-    ## Selecting the two useful columns
+    # Selecting the two useful columns
     pages_df = pages_df[['nom_dossier', 'my_yaml_image_path']]
-    ## Merging the two
+    # Merging the two
     pages_df = pages_df.merge(pd.DataFrame.from_dict(attachments_dict), how='left', left_on='my_yaml_image_path', right_on='short_image_name')
-    ## Creating destination file
+    # Creating destination file
     pages_df['dest_image_path'] = pages_df['nom_dossier'] + '/' + pages_df['my_yaml_image_path']
-    pages_df.dropna(subset='local_image_path', inplace=True)  # Droping files where didn't download image 
-    ## Moving all images to their folder
+    pages_df.dropna(subset='local_image_path', inplace=True)  # Droping files where didn't download image
+    # Moving all images to their folder
     for index, row in pages_df.iterrows():
         os.rename(row['local_image_path'], row['dest_image_path'])
         print(f'File {row['local_image_path']} == moved to ==> {row['dest_image_path']}')
@@ -814,9 +814,9 @@ def fill_all_templates_from_grist(path_to_template='ssphub_directory/template.qm
 
 def remove_files_dir(*file_paths):
     """
-    Remove files or folder. 
+    Remove files or folder
 
-    Args: 
+    Args:
         file_paths (string) : List of files or folder to delete
 
     Return:

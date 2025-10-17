@@ -17,6 +17,10 @@ my_f.generate_email(
 ## Send to all
 my_f.generate_email(newsletter_nb, 'main', 'Infolettre de rentrée', get_emails())
 
+## Treat replies
+my_f.add_to_grist_delete_table(my_f.extract_emails_from_txt(file_path='ssphub_directory/test/replies.txt'))
+
+
 # To generate template
 # my_f.remove_files_dir('ssphub/project/test')
 # my_f.fill_all_templates_from_grist()

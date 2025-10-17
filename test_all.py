@@ -3,6 +3,7 @@ from ssphub_directory.my_functions import *
 def test_generate_email():
     generate_email(19, 'main', 'Infolettre de rentrée', 'my_to_email@insee.fr', get_emails())
 
+
 def test_extract_emails():
 
     # writing testing file
@@ -34,9 +35,7 @@ def test_extract_emails():
 
     # Test function
     assert "test9@example.com" in extract_emails_from_txt(file_path='ssphub_directory/test/replies.txt')
-    
-# def test_export_list_to_csv():
-#     export_list_to_csv(extract_emails_from_txt(), 'output/temp.csv')
+
 
 def test_fill_template_one_row():
     # Create a test DataFrame with the variables to replace
@@ -52,7 +51,7 @@ def test_fill_template_one_row():
         'my_table_actors': ['- John <br> - Jackie'],
         'my_table_contact': ['Contact Info test'],
         'my_table_results': ['- I have several results available [here](https://www.google.com/) <br> - and another one [here](https://www.qwant.fr)'],
-        'my_table_repo_path': ['- [here](https://www.google.com/) <br>- or [here](https://www.google.com/)'], 
+        'my_table_repo_path': ['- [here](https://www.google.com/) <br>- or [here](https://www.google.com/)'],
         'nom_dossier': ['test/mytest']
     })
 
@@ -60,7 +59,7 @@ def test_fill_template_one_row():
 
 
 def test_fill_template_two_rows():
-    new_website_df = get_grist_merge_as_df()  
+    new_website_df = get_grist_merge_as_df()
     fill_template('ssphub_directory/template.qmd', new_website_df.head(2), 'ssphub_directory/')
 
 
@@ -116,6 +115,6 @@ def test_add_email_grist():
 
 def test_global():
     remove_files_dir('.temp/', 'ssphub_directory/test/', 'test/')
-    
+
     fill_all_templates_from_grist(directory='ssphub_directory/test')
     generate_email(19, 'main', 'Infolettre de rentrée', 'my_to_email@insee.fr', get_emails())
