@@ -18,7 +18,6 @@ import os  # to remove temporary files, create directory etc
 from grist_api import GristDocAPI  # To get directory emails
 import polars as pl  # to manage directory emails
 import pandas as pd  # to manage directory emails
-import csv  # to store results of data cleaning
 import re  # For pattern matching to search for emails
 import shutil  # to remove directory and its content
 import zipfile  # GRIST attachments
@@ -530,7 +529,7 @@ def get_emails():
     return '; '.join(my_directory_df['email'])
 
 
-def extract_emails_from_txt(file_path='ssphub_directory/input/replies.txt'):
+def extract_emails_from_txt(file_path='ssphub_directory/test/replies.txt'):
     """
     Extract all email addresses from a file that contains all the automatic replies to a newsletter / an email.
 
@@ -557,27 +556,18 @@ def extract_emails_from_txt(file_path='ssphub_directory/input/replies.txt'):
     return emails
 
 
-def export_list_to_csv(data_list, file_path):
+def add_to_grist_delete_table(data_list):
     """
-    Export a list to a CSV file using the csv module.
+    Export a list of email adresses to Grist to delete table
 
     Args:
-        data_list (list): The list to export.
-        file_path (str): The path to the CSV file.
+        data_list (list): The list of email to export to Grist
 
     Returns:
         None
-
     """
 
-    # Create the directory if it does not exist
-    os.makedirs(file_path)
-
-    # Writing the CSV
-    with open(file_path, 'w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        for item in data_list:
-            writer.writerow([item])
+    get_grist_directory_login().add_records('Delete', [{'Emails_to_delete':email} for email in data_list])
 
 
 #     UNUSED FOR NOW - A FIRST BRICK TO BUILD ON A FUNCTION TO AUTOMATICALLY DELETE ROWS BASED ON IDs
@@ -851,4 +841,3 @@ if __name__ == '__main__':
     generate_email(19, 'main', 'Infolettre de rentrée', 'my_to_email@insee.fr', get_emails())
 
     remove_files_dir('.temp/', 'ssphub_directory/test/')
-
