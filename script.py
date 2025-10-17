@@ -19,7 +19,8 @@ my_f.generate_email(newsletter_nb, 'main', 'Infolettre de rentrée', get_emails(
 
 ## Treat replies
 my_f.add_to_grist_delete_table(my_f.extract_emails_from_txt(file_path='ssphub_directory/test/replies.txt'))
-
+## If trust in the code : 
+my_f.delete_email_from_contact_table(file_path='ssphub_directory/test/replies.txt')
 
 # To generate template
 # my_f.remove_files_dir('ssphub/project/test')

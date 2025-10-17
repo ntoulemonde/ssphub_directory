@@ -570,31 +570,48 @@ def add_to_grist_delete_table(data_list):
     get_grist_directory_login().add_records('Delete', [{'Emails_to_delete': email} for email in data_list])
 
 
-#     UNUSED FOR NOW - A FIRST BRICK TO BUILD ON A FUNCTION TO AUTOMATICALLY DELETE ROWS BASED ON IDs
-# def get_ids_of_email(emails_list):
-#     """
-#     Return the ids of the rows of the email in the GRIST directory
+def get_ids_of_email(table_id, emails_list):
+    """
+    Return the ids of the rows of the email in the GRIST directory
 
-#     Args:
-#         emails_list (list) : a list of strings, containing the emails to look for in df
+    Args:
+        emails_list (list) : a list of strings, containing the emails to look for in df
 
-#     Returns:
-#         list: A list of ids of the rows in df
+    Returns:
+        list: A list of ids of the rows in df
 
-#     """
-#     # Get the latest GRIST directory
-#     api_directory = get_grist_directory_login()
-#     directory_df = api_directory.fetch_table('Contact')
-#     directory_df = pd.DataFrame(directory_df)
+    """
+    # Get the latest GRIST directory
+    api_directory = get_grist_directory_login()
+    directory_df = api_directory.fetch_table(table_id)
+    directory_df = pl.DataFrame(pd.DataFrame(directory_df)[["id", "email"]])  # Using pandas bcs pl has an issue with list input from Grist
 
-#     # Emails to dataframe
-#     emails_df = pd.DataFrame({'emails':emails_list})
+    # Filter the emails
+    res = directory_df.filter(pl.col('email').is_in(emails_list))
+    res = pl.Series(res.select(pl.col('id'))).to_list()
 
-#     # Filter the emails
-#     res = directory_df[directory_df['email'].isin(emails_df['emails'])]
-#     res = res['id'].values.tolist()
+    return res
 
-#     return res
+
+def delete_email_from_contact_table(file_path):
+    """
+    Takes a txt file as input and delete the detected email from the Contacts table of Grist
+
+    Args:
+        file_path (string): path to the txt file to extract emails from
+
+    Return:
+        None
+    """
+    emails_list = extract_emails_from_txt(file_path)
+    print(str(len(emails_list)) + ' emails extraits du fichier: ', emails_list)
+    print()
+    emails_id = get_ids_of_email('Contact', emails_list)
+    print(str(len(emails_id)) + ' emails trouvés dans la table Contact \n')
+    get_grist_directory_login().delete_records('Contact', emails_id)
+    print('Emails supprimés de la table Contact \n')
+
+
 
 def clean_br_values_df(df):
     """

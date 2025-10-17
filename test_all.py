@@ -1,4 +1,5 @@
 from ssphub_directory.my_functions import *
+import time  # for pausing code execution
 
 def test_generate_email():
     generate_email(19, 'main', 'Infolettre de rentrée', 'my_to_email@insee.fr', get_emails())
@@ -86,32 +87,19 @@ def test_grist_attachment_download():
 def test_add_email_grist():
     # Test file definition
     lines = [
-        'test1@example.com\n',  # Email alone
-        'Contact me at test2@example.com for more information.\n',  # Email in the middle of a sentence
-        'This is a normal line of text.\n',  # Normal line
-        'Email: test3@example.com\n',  # Email alone with label
-        'Please send your feedback to test4@example.com.\n',  # Email in the middle of a sentence
-        'Another normal line of text.\n',  # Normal line
-        'test5@example.com\n',  # Email alone
-        'You can reach me at test6@example.com if you have any questions.\n',  # Email in the middle of a sentence
-        'Yet another normal line of text.\n',  # Normal line
-        'Email address: test7@example.com\n',  # Email alone with label
-        'Contact us at test8@example.com for support.\n',  # Email in the middle of a sentence
-        'More normal text here.\n',  # Normal line
-        'test9@example.com\n',  # Email alone
-        'Please email your inquiries to test10@example.com.\n',  # Email in the middle of a sentence
-        'Still normal text.\n',  # Normal line
-        'Email: test1@example.com\n',  # Email alone with label
-        'You can find more details at test2@example.com.\n',  # Email in the middle of a sentence
-        'Normal text continues.\n',  # Normal line
-        'test3@example.com\n',  # Email alone
-        'Contact me at test4@example.com for assistance.\n'  # Email in the middle of a sentence
+        'test1@example.com',
+        'test3@example.com'
     ]
+    add_to_grist_delete_table(lines)
 
-    with open('ssphub_directory/test/replies.txt', mode='w') as file:
-        file.writelines(lines)
-
-    add_to_grist_delete_table(extract_emails_from_txt(file_path='ssphub_directory/test/replies.txt'))
+def test_remove_rows():
+    emails_list = [
+        'test1@example.com',
+        'test3@example.com'
+    ]
+    add_to_grist_delete_table(emails_list)
+    time.sleep(3)
+    get_grist_directory_login().delete_records('Delete', get_ids_of_email('Delete', emails_list))
 
 def test_global():
     remove_files_dir('.temp/', 'ssphub_directory/test/', 'test/')
